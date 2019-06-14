@@ -16,15 +16,21 @@ const SESSDATA = ''
 
 const getInfo = async aid => {
     let res = await rp(`https://api.bilibili.com/x/web-interface/view?aid=${aid}`)
-    return JSON.parse(res).data
+    return JSON.parse(res).data.pages.map(v => {
+        v.aid = aid
+        return v
+    })
 }
-const getCids = pages => pages.map(value => value.cid)
-const getURLs = async (aid, cids) => {
-    return Promise.all(cids.map(async cid => {
+const getURLs = async info => {
+    return Promise.all(info.map(async value => {
+        const aid = value.aid
+            , cid = value.cid
+
         let res = await rp({
             uri: `https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${qn}&otype=json`,
             headers: {
                 'Cookie': 'SESSDATA=' + SESSDATA
+                , 'Referer' : 'https://www.bilibili.com'
             }
         })
         let durls = JSON.parse(res).data.durl
@@ -32,7 +38,7 @@ const getURLs = async (aid, cids) => {
     }))
 }
 const exportIDM = urls => {
-    let data = urls.map(durl => `<\r\n${durl.url}\r\nreferer: https://www.bilibili.com\r\n>\r\n`).join('')
+    let data = urls.map(url => `<\r\n${url}\r\nreferer: https://www.bilibili.com\r\n>\r\n`).join('')
     fs.writeFileSync('./all.ef2', data)
 }
 
@@ -40,8 +46,7 @@ const exportIDM = urls => {
     let aid = ''
 
     let info = await getInfo(aid)
-        , cids = getCids(info.pages)
-        , urls = await getURLs(aid, cids)
+        , urls = await getURLs(info)
 
     exportIDM(urls)
 })()

@@ -1,0 +1,14 @@
+{
+  "name": "bilibili_vedio_download",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "evgo",
+  "license": "MIT",
+  "dependencies": {
+    "request-promise": "^4.2.4"
+  }
+}
