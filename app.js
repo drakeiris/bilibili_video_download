@@ -5,84 +5,91 @@
  */
 const rp = require('request-promise')
     , fs = require('fs')
+    , readline = require('readline')
+    , Exporter = require('./utils/Exporter')
+    , Download = require('./utils/Download')
 
-/* 
+    /* 
  * options：
  * SESSDATA: 控制台->Application->Storage->Cookies->SESSDATA，改成自己的
  * qn：quality，最高视频清晰度，返回的 qn <= 设置的 qn
  */
 const SESSDATA = ''
-    , qn = 116
-    , referer = 'https://www.bilibili.com'
-    , aria2RPC = 'http://localhost:6800/jsonrpc'
+    , REFERER = 'https://www.bilibili.com'
+    , QN = 116
+    , headers = {
+        'Cookie': `SESSDATA=${SESSDATA}`
+        , 'Referer': `${REFERER}`
+    }
+    , ARIA2RPC = 'http://localhost:6800/jsonrpc'
+    , BASEDIR = '/share/CACHEDEV2_DATA/Vedio/Download/' // 必须以 '/' 结尾
 
-const getInfo = async aid => {
-    let res = await rp(`https://api.bilibili.com/x/web-interface/view?aid=${aid}`)
-    return JSON.parse(res).data
-}
-const getURLs = async info => {
-    const { aid, pages } = info
-    return Promise.all(pages.map(async value => {
-        const title = value.part
-            , cid = value.cid
+class Info {
+    static async Vedio(av) {
+        let res = await rp(`https://api.bilibili.com/x/web-interface/view?aid=${av}`)
+        const { aid, title, pages } = JSON.parse(res).data
 
-        let res = await rp({
-            uri: `https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${qn}&otype=json`,
-            headers: {
-                'Cookie': 'SESSDATA=' + SESSDATA
-                , 'Referer': referer
-            }
-        })
-        let durls = JSON.parse(res).data.durl
-        if (durls.length<2) {
-            return {
-                title: title,
-                url: durls[0].url
-            }
-        } else {
-            // 待完善: 多P多段
-            return durls.map((durl, index) => {
-                return {
-                    title: `${title}-${index}`,
-                    url: durl.url
-                }
+        return Promise.all(pages.map(async page => {
+            const { part, cid } = page
+            let res, durl
+
+            res = await rp({
+                uri: `https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`,
+                headers: headers
             })
-        }
-    }))
-}
-const exportIDM = urls => {
-    let data = urls.map(value => `<\r\n${value.url}\r\nreferer: ${referer}\r\n>\r\n`).join('')
-    fs.writeFileSync('./idm.ef2', data)
-}
-const exportAria2 = urls => {
-    let data = urls.map(value => `${value.url}\r\n referer=${referer}\r\n out=${value.title}.FLV\r\n`).join('')
-    fs.writeFileSync('./aria2.txt', data)
-}
-const sendToAria2RPC = async urls => {
-    urls.map(value => {
-        rp({
-            uri: aria2RPC,
-            method: 'POST',
-            body: {
-                id: '',
-                jsonrpc: 2,
-                method: "aria2.addUri",
-                params: [
-                    [value.url],
-                    { 'referer': referer, 'out': `${value.title}.FLV` }
-                ]
-            },
-            json: true
-        })
-    })
+            durl = JSON.parse(res).data.durl
+
+            if (durl.length < 2) {
+                return [{
+                    dir: '',
+                    part,
+                    url: durl[0].url
+                }]
+            } else {
+                return durl.map((value, index) => {
+                    return {
+                        dir: title,
+                        part: `${part}-${index}`,
+                        url: value.url
+                    }
+                })
+            }
+        }))
+    }
+
+    static async Bangumi(name, ss) {
+        let res = await rp(`https://api.bilibili.com/pgc/web/season/section?season_id=${ss}`)
+        const pages = JSON.parse(res).result.main_section.episodes
+
+        return Promise.all(pages.map(async page => {
+            const { id, title, long_title } = page
+            let res, durl
+
+            res = await rp({
+                uri: `https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`,
+                headers: headers
+            })
+            durl = JSON.parse(res).result.durl
+
+            if (durl.length < 2) {
+                return [{
+                    dir: name,
+                    part: `第${title}集-${long_title}`,
+                    url: durl[0].url
+                }]
+            } else {
+                return durl.map((value, index) => {
+                    return {
+                        dir: name,
+                        part: `第${title}集-${long_title}-${index}`,
+                        url: value.url
+                    }
+                })
+            }
+        }))
+    }
 }
 
 (async () => {
-    let aid = ''
 
-    let info = await getInfo(aid)
-        , urls = await getURLs(info)
-
-    exportIDM(urls)
-    exportAria2(urls)
 })()
