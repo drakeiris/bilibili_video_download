@@ -9,6 +9,7 @@
   "author": "evgo",
   "license": "MIT",
   "dependencies": {
+    "readline-sync": "^1.4.9",
     "request": "^2.88.0",
     "request-promise": "^4.2.4"
   }
