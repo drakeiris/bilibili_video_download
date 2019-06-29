@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 参考资料：
  * https://github.com/Xmader/bilitwin
  * https://github.com/blogwy/BilibiliVideoDownload
@@ -76,11 +76,10 @@ class Info {
                     headers: HEADERS,
                     gzip: true,
                     transform: function (body) {
-                        return cheerio.load(body);
                     }
                 })
-            let title = '1'
 
+            let title = $('meta[name=keywords]').attr('content')
             let downloadInfo = await rp({
                 uri: `https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`,
                 headers: HEADERS
@@ -153,7 +152,7 @@ class Exporter {
     static Aria2(infos) {
         let data = []
         infos.map(info => info.map(pages => pages.map(page => {
-            data.push(`${page.url}\r\n referer=${REFERER}\r\n dir=${BASEDIR}${page.dir}\r\n out=${page.part}.FLV\r\n`)
+            data.push(`${page.url}\r\n referer=${REFERER}\r\n dir=${BASEDIR}${page.dir}\r\n out=${page.out}.FLV\r\n`)
         })))
         fs.writeFile('./download.txt', data.join(','), (err) => {
             if (err) throw err
@@ -163,7 +162,7 @@ class Exporter {
     static Aria2RPC(infos) {
         infos.map(info => info.map(pages => pages.map(page => {
             rp({
-                uri: ARIA2RPC,
+                uri: `${ARIA2RPC}`,
                 method: 'POST',
                 body: {
                     id: '',
