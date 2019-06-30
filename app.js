@@ -76,6 +76,7 @@ class Info {
                     headers: HEADERS,
                     gzip: true,
                     transform: function (body) {
+                        return cheerio.load(body)
                     }
                 })
 
