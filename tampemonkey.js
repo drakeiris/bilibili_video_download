@@ -3,7 +3,7 @@
 // @namespace   http://evgo2017.com/
 // @homepageURL https://github.com/evgo2017/bilibili_vedio_download
 // @supportURL  https://github.com/evgo2017/bilibili_vedio_download/issues
-// @description bilibili/哔哩哔哩视频/番剧下载，目前仅支持单个（当前页）视频下载，支持大会员视频下载（需要用户本身是大会员），IDM，Aria2，Aria2RPC 导出方式。详细内容请在 Github 查看。参考资料：https://github.com/Xmader/bilitwin/ && https://github.com/blogwy/BilibiliVideoDownload
+// @description bilibili/哔哩哔哩视频/番剧下载，单/多P下载，单/多集下载，多视频/番剧下载，大会员（本身是），IDM，Aria2，Aria2RPC 导出方式。详细内容请在 Github 查看。参考资料：https://github.com/Xmader/bilitwin/ && https://github.com/blogwy/BilibiliVideoDownload
 // @match       *://www.bilibili.com/video/av*
 // @match       *://www.bilibili.com/bangumi/play/ep*
 // @match       *://www.bilibili.com/bangumi/play/ss*
@@ -17,6 +17,10 @@
 // @grant       none
 // @run-at      document-start
 // ==/UserScript==
+
+/*
+ * 目前还在完善功能，待抽象、优化
+ */
 (async function () {
     'use strict';
     const REFERER = 'https://www.bilibili.com'
@@ -32,22 +36,22 @@
         xhr.send()
         return xhr.responseText
     }
+
     class Vedio {
         static async part(vedio) {
             let { dir, id: aid, cid, part } = vedio
             part = part ? part : dir
-
             let downloadInfo = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
 
             let durl = JSON.parse(downloadInfo).data.durl
             if (durl.length < 2) {
                 // 无分段
-                return [[{ dir, part, out: part, url: durl[0].url }]]
+                return [[[{ dir, part, out: part, url: durl[0].url }]]]
             } else {
                 // 有分段
-                return [durl.map((value, index) => {
+                return [[durl.map((value, index) => {
                     return { dir, part, out: `${part}-${index}`, url: value.url }
-                })]
+                })]]
             }
         }
         static async allPart(vedio) {
@@ -57,60 +61,76 @@
 
             return Promise.all(pages.map(async page => {
                 const { cid } = page
-
                 let { part } = page
-                part = part ? part : title
-
+                part = part ? part : dir
                 let downloadInfo = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
 
                 let durl = JSON.parse(downloadInfo).data.durl
                 if (durl.length < 2) {
                     // 无分段
-                    return [{ dir, part, out: part, url: durl[0].url }]
+                    return [[{ dir, part, out: part, url: durl[0].url }]]
                 } else {
                     // 有分段
-                    return durl.map((value, index) => {
+                    return [durl.map((value, index) => {
                         return { dir, part, out: `${part}-${index}`, url: value.url }
-                    })
+                    })]
                 }
+            }))
+        }
+        static async allVedio(vedios) {
+            return Promise.all(vedios.map(async video => {
+                let res = await Vedio.allPart(video)
+                let ress = []
+                res.forEach(r => {
+                    ress.push(r[0])
+                })
+                return ress
             }))
         }
     }
     class Bangumi {
         static async part(bangumi) {
-            let { dir, id: ep_id, part, episode } = bangumi
+            let { dir, id, part, episode } = bangumi
             part = part ? part : dir
+            let downloadInfo = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
 
-            let downloadInfo = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${ep_id}&qn=${QN}&otype=json`)
-
-            console.log(downloadInfo)
             let durl = JSON.parse(downloadInfo).result.durl
             if (durl.length < 2) {
-                return [[{ dir, part, out: `第${episode}集-${part}`, url: durl[0].url }]]
+                return [[[{ dir, part, out: `第${episode}集-${part}`, url: durl[0].url }]]]
             } else {
-                return [durl.map((value, index) => {
+                return [[durl.map((value, index) => {
                     return { dir, part, out: `第${episode}集-${part}-${index}`, url: value.url }
-                })]
+                })]]
             }
         }
         static async allPart(bangumi) {
-            let { dir, id: ss } = bangumi
-            let bangumiInfo = await rp(`https://api.bilibili.com/pgc/web/season/section?season_id=${ss}`)
-            const pages = JSON.parse(bangumiInfo).result.main_section.episodes
+            let { dir, epList } = bangumi
 
-            return Promise.all(pages.map(async page => {
-                const { id, title: episode, long_title: part } = page
-
+            return Promise.all(epList.map(async page => {
+                const { id, title: episode } = page
+                const part = page.longTitle ? page.longTitle : page.long_title
                 let downloadInfo = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
 
                 let durl = JSON.parse(downloadInfo).result.durl
                 if (durl.length < 2) {
-                    return [{ dir, part, out: `第${episode}集-${part}`, url: durl[0].url }]
+                    return [[{ dir, part, out: `第${episode}集-${part}`, url: durl[0].url }]]
                 } else {
                     return [durl.map((value, index) => {
                         return { dir, part, out: `第${episode}集-${part}-${index}`, url: value.url }
                     })]
                 }
+            }))
+        }
+        static async allBangumi(bangumis) {
+            return Promise.all(bangumis.map(async bangumi => {
+                let bangumiInfo = await rp(`https://api.bilibili.com/pgc/web/season/section?season_id=${bangumi.id}`)
+                bangumi.epList = JSON.parse(bangumiInfo).result.main_section.episodes
+                let res = await Bangumi.allPart(bangumi)
+                let ress = []
+                res.forEach(r => {
+                    ress.push(r[0])
+                })
+                return ress
             }))
         }
     }
@@ -123,6 +143,7 @@
         static async get() {
             let currentURL = window.location.href
             if (currentURL.search('space') > -1) {
+                let exporterTypes = []
                 // 收藏/订阅/追剧 批量
                 const up_mid = /\d+/.exec(currentURL)[0]
                 if (currentURL.search('favlist') > -1) {
@@ -150,11 +171,18 @@
                         let res = await rp(`https://api.bilibili.com/medialist/gateway/base/spaceDetail?media_id=${media_id}&ps=20&pn=${pn}&keyword=&order=mtime&type=0&tid=0&jsonp=jsonp`)
                         let medias = JSON.parse(res).data.medias
                         for (let media of medias) {
-                            let { title, id, page: total_count } = media
-                            infos.push({ title, id, total_count })
+                            let { title: dir, id } = media
+                            infos.push({ dir, id })
                         }
                     }
-                    return infos
+
+                    let infoss = await Vedio.allVedio(infos)
+                    // 页面选择列表
+                    exporterTypes.push('当前收藏夹')
+                    exporterTypes.push(Exporter.IDM(infoss))
+                    exporterTypes.push(Exporter.Aria2(infoss))
+                    exporterTypes.push(Exporter.Aria2RPC(infoss))
+                    Exporter.list(exporterTypes)
                 } else if (currentURL.search('bangumi') > -1) {
                     // @match *://space.bilibili.com/*/favlist*
                     // 追番
@@ -178,31 +206,19 @@
                             infos.push({ dir, id, total_count })
                         })
                     }
-                    return infos
+
+                    console.log(infos)
+                    let infoss = await Bangumi.allBangumi(infos)
+                    // 页面选择列表
+                    exporterTypes.push('追剧')
+                    exporterTypes.push(Exporter.IDM(infoss))
+                    exporterTypes.push(Exporter.Aria2(infoss))
+                    exporterTypes.push(Exporter.Aria2RPC(infoss))
+                    Exporter.list(exporterTypes)
                 } else if (currentURL.search('cinema') > -1) {
                     // @match *://space.bilibili.com/*/cinema*
-                    // 追剧 优化，与番剧仅差在 type 值
-                    let infos = []
+                    // 追剧 优化，与番剧差在 type 值
                     let type = 2
-                    let ts = Date.parse(new Date())
-                    let res = await rp(`https://api.bilibili.com/x/space/bangumi/follow/list?type=${type}&follow_status=0&pn=1&ps=15&vmid=${up_mid}&ts=${ts}`)
-                    const { pn: maxPn } = JSON.parse(res).data
-                    let { list } = JSON.parse(res).data
-                    // title, season_id, total_count
-                    list.forEach(bangumi => {
-                        let { title: dir, season_id, total_count } = bangumi
-                        infos.push({ dir, id: season_id, total_count })
-                    })
-                    for (let pn = 2; pn <= maxPn; pn++) {
-                        // 说明有多页，需要多次获取
-                        res = await rp(`https://api.bilibili.com/x/space/bangumi/follow/list?type=${type}&follow_status=0&pn=${pn}&ps=15&vmid=${up_mid}&ts=${ts}`)
-                        list = JSON.parse(res).data
-                        list.forEach(bangumi => {
-                            let { title: dir, season_id: id, total_count } = bangumi
-                            infos.push({ dir, id, total_count })
-                        })
-                    }
-                    return infos
                 }
             } else {
                 // 单个
@@ -212,6 +228,7 @@
                     let avState = async function () {
                         // 单/全 Part
                         if (window.__INITIAL_STATE__ && window.__INITIAL_STATE__.videoData.pages) {
+                            let exporterTypes = []
                             let inital = window.__INITIAL_STATE__
                                 , { aid, videoData } = inital
                             let p = window.location.search ? /\d+/.exec(window.location.search)[0] - 1 : 0
@@ -220,37 +237,60 @@
                                 , dir = document.querySelector('#viewbox_report h1').title
                             // 文件夹名称不可以包含 \/:?*"<>|
                             dir = dir.replace(/[\\\/:?*"<>|]/ig, '-')
-
-                            let vedio = { dir, id: aid, total_count, cid, part }
-                                , info = await Vedio.part(vedio)
-                            console.log(info)
-                            return info
+                            let infos = await Vedio.part({ dir, id: aid, total_count, cid, part })
+                            // 页面选择列表
+                            // 当前 Part
+                            exporterTypes.push('此 Part')
+                            exporterTypes.push(Exporter.IDM(infos))
+                            exporterTypes.push(Exporter.Aria2(infos))
+                            exporterTypes.push(Exporter.Aria2RPC(infos))
+                            exporterTypes.push({})
+                            // 全 Part
+                            infos = await Vedio.allPart({ dir, id: aid })
+                            exporterTypes.push('全 Part')
+                            exporterTypes.push(Exporter.IDM(infos))
+                            exporterTypes.push(Exporter.Aria2(infos))
+                            exporterTypes.push(Exporter.Aria2RPC(infos))
+                            Exporter.list(exporterTypes)
                         } else {
-                            setTimeout(avState, 1000)
+                            setTimeout(avState, 500)
                         }
                     }
-                    setTimeout(avState, 1000)
+                    setTimeout(avState, 500)
                 } else if (currentURL.search('bangumi') > -1) {
                     // @match *://www.bilibili.com/bangumi/play/ep*
                     // 番剧
                     let epStatus = async function () {
                         // 单/全集
                         // 当前 epInfo，全 epList
-                        if (window.__INITIAL_STATE__ && window.__INITIAL_STATE__.epInfo && window.__INITIAL_STATE__.epInfo.epStatus >= 2) {
+                        if (window.__INITIAL_STATE__ && window.__INITIAL_STATE__.epInfo && window.__INITIAL_STATE__.epInfo.id > -1 && window.__INITIAL_STATE__.epList) {
+                            let exporterTypes = []
+                            // 当前单集
                             let { id, title: episode, longTitle: part } = window.__INITIAL_STATE__.epInfo
                                 , dir = document.querySelector('.media-title').title
                             // 文件夹名称不可以包含 \/:?*"<>|
                             dir = dir.replace(/[\\\/:?*"<>|]/ig, '-')
-
-                            let bangumi = { dir, id, total_count: 1, part, episode }
-                                , info = await Bangumi.part(bangumi)
-                            console.log(info)
-                            return info
+                            let infos = await Bangumi.part({ dir, id, part, episode })
+                            // 页面列表
+                            exporterTypes.push('此集')
+                            exporterTypes.push(Exporter.IDM(infos))
+                            exporterTypes.push(Exporter.Aria2(infos))
+                            exporterTypes.push(Exporter.Aria2RPC(infos))
+                            exporterTypes.push({})
+                            // 全集
+                            let epList = window.__INITIAL_STATE__.epList
+                            infos = await Bangumi.allPart({ dir, epList })
+                            console.log(infos)
+                            exporterTypes.push('全集')
+                            exporterTypes.push(Exporter.IDM(infos))
+                            exporterTypes.push(Exporter.Aria2(infos))
+                            exporterTypes.push(Exporter.Aria2RPC(infos))
+                            Exporter.list(exporterTypes)
                         } else {
-                            setTimeout(epStatus, 1000)
+                            setTimeout(epStatus, 500)
                         }
                     }
-                    setTimeout(epStatus, 1000)
+                    setTimeout(epStatus, 500)
                 }
             }
         }
@@ -260,40 +300,116 @@
         static IDM(infos) {
             let data = []
             infos.map(info => info.map(pages => pages.map(page => {
-                data.push(`<\r\n${page.url}\r\nreferer: ${REFERER}\r\n>\r\n`)
+                let { url } = page
+                data.push(`<\r\n${url}\r\nreferer: ${REFERER}\r\n>\r\n`)
             })))
-            fs.writeFile('./download.ef2', data.join(','), (err) => {
-                if (err) throw err
-                console.log('完成')
-            })
+            return {
+                textContent: 'IDM',
+                download: 'download.ef2',
+                href: URL.createObjectURL(new Blob([data.join('')]))
+            }
         }
         static Aria2(infos) {
             let data = []
             infos.map(info => info.map(pages => pages.map(page => {
-                data.push(`${page.url}\r\n referer=${REFERER}\r\n dir=${BASEDIR}${page.dir}\r\n out=${page.out}.FLV\r\n`)
+                let { dir, url, out } = page
+                data.push(`${url}\r\n referer=${REFERER}\r\n dir=${BASEDIR}${dir}\r\n out=${out}.FLV\r\n`)
             })))
-            fs.writeFile('./download.txt', data.join(','), (err) => {
-                if (err) throw err
-                console.log('完成')
-            })
+            return {
+                textContent: 'Aria2',
+                download: 'download.session',
+                href: URL.createObjectURL(new Blob([data.join('')]))
+            }
         }
         static Aria2RPC(infos) {
-            infos.map(info => info.map(pages => pages.map(page => {
-                rp({
-                    uri: `${ARIA2RPC}`,
-                    method: 'POST',
-                    body: {
-                        id: '',
-                        jsonrpc: 2,
-                        method: "aria2.addUri",
-                        params: [
-                            [page.url],
-                            { 'referer': `${REFERER}`, 'out': `${page.out}.FLV`, 'dir': `${BASEDIR}${page.dir}` }
-                        ]
-                    },
-                    json: true
-                })
-            })))
+            return {
+                textContent: 'Aria2RPC',
+                href: '',
+                onclick: function () {
+                    infos.map(info => info.map(pages => pages.map(page => {
+                        let rpcStatus = document.getElementById('rpcStatus')
+                            , { dir, out, url } = page
+
+                        let xhr = new XMLHttpRequest()
+                        xhr.onloadstart = e => {
+                            rpcStatus.innerHTML = '<p>发送请求</p>'
+                        }
+                        xhr.onload = e => {
+                            rpcStatus.innerHTML = '<p>请求完成</p>'
+                        }
+                        xhr.onerror = e => {
+                            rpcStatus.innerHTML = `<p>请求出错:${e}</p>`
+                            console.log(e)
+                        }
+                        xhr.ontimeout = e => {
+                            rpcStatus.innerHTML += '<p>请求超时</p>'
+                        }
+                        xhr.open('POST', `${ARIA2RPC}`, true);
+                        xhr.setRequestHeader('Content-Type', 'application/json;charset=utf-8')
+                        xhr.send(JSON.stringify([{
+                            id: '',
+                            jsonrpc: 2,
+                            method: "aria2.addUri",
+                            params: [
+                                `token:${ARIA2TOKEN}`,
+                                [url],
+                                { 'referer': `${REFERER}`, 'out': `${BASEDIR}${out}.FLV`, 'dir': `${dir}` }
+                            ]
+                        }]))
+                    })))
+                }
+            }
+        }
+        static list(types) {
+            let dd = document.createElement('div')
+            dd.style.backgroundColor = '#00A1D6'
+            dd.style.zIndex = 999
+            dd.style.position = 'fixed'
+            dd.style.width = '76px'
+            dd.style.fontSize = '1.2em'
+            dd.textContent = '下载方式'
+            dd.style.top = '70px'
+
+            let rpcStatus = document.createElement('p')
+            rpcStatus.id = 'rpcStatus'
+            rpcStatus.style.color = 'red'
+            dd.appendChild(rpcStatus)
+            for (let i of types) {
+                dd.appendChild(createA(i))
+            }
+            dd.appendChild(createA({}))
+            dd.appendChild(createA({ textContent: '帮助', href: 'https://github.com/evgo2017/bilibili_vedio_download' }))
+            let wait = () => {
+                if (document.body) {
+                    document.body.appendChild(dd)
+                } else {
+                    setTimeout(wait, 1000)
+                }
+            }
+            setTimeout(wait, 1000)
+            function createA(goal) {
+                let { textContent, download, href, onclick } = goal
+                let a = document.createElement('a')
+                a.style.display = 'block'
+                a.style.fontSize = '1em'
+                a.style.padding = '5px'
+
+                if (typeof goal == 'string') {
+                    a.textContent = goal
+                    return a
+                }
+                if (textContent) {
+                    a.style.color = '#fff'
+                    a.textContent = textContent ? textContent : '-----'
+                } else {
+                    a.style.color = '#000'
+                    a.textContent = '-----'
+                }
+                if (href) a.href = href
+                if (download) a.download = download
+                if (onclick) a.onclick = onclick
+                return a
+            }
         }
     }
     Info.get()
