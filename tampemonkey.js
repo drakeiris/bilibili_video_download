@@ -3,7 +3,7 @@
 // @namespace   http://evgo2017.com/
 // @homepageURL https://github.com/evgo2017/bilibili_vedio_download
 // @supportURL  https://github.com/evgo2017/bilibili_vedio_download/issues
-// @description bilibili/哔哩哔哩视频/番剧下载，单/多P下载，单/多集下载，多视频/番剧下载，大会员（本身是），IDM，Aria2，Aria2RPC 导出方式。详细内容请在 Github 查看。参考资料：https://github.com/Xmader/bilitwin/ && https://github.com/blogwy/BilibiliVideoDownload
+// @description bilibili/哔哩哔哩视频/番剧下载，单/多P下载，单/多集下载，多视频/番剧正片下载，大会员（本身是），IDM，Aria2，Aria2RPC 导出方式。详细内容请在 Github 查看。参考资料：https://github.com/Xmader/bilitwin/ && https://github.com/blogwy/BilibiliVideoDownload
 // @match       *://www.bilibili.com/video/av*
 // @match       *://www.bilibili.com/bangumi/play/ep*
 // @match       *://www.bilibili.com/bangumi/play/ss*
@@ -18,9 +18,6 @@
 // @run-at      document-start
 // ==/UserScript==
 
-/*
- * 目前还在完善功能，待抽象、优化
- */
 (async function () {
     'use strict';
     const REFERER = 'https://www.bilibili.com'
@@ -29,6 +26,10 @@
         , ARIA2TOKEN = '' // Aria2 Secret Token
         , QN = 116
 
+    /**
+     * 获取 api 数据
+     * @param {string} url 
+     */
     function rp(url) {
         let xhr = new XMLHttpRequest()
         xhr.withCredentials = true
@@ -36,14 +37,46 @@
         xhr.send()
         return xhr.responseText
     }
+    /**
+     * 获取 url 中的参数
+     * @param {string} param 
+     */
+    function getParameter(param) {
+        let reg = new RegExp(param + "=([^\&]*)", "i")
+            , res = reg.exec(window.location.search)
+        if (res == null) return null
+        return parseInt(res[1])
+    }
+    /**
+     * 监听 history，无需刷新页面即可更新功能列表
+     * @param {string} type 
+     */
+    /*https://stackoverflow.com/questions/4570093/how-to-get-notified-about-changes-of-the-history-via-history-pushstate*/
+    const _wr = function (type) {
+        var orig = history[type]
+        return function () {
+            var rv = orig.apply(this, arguments)
+            var e = new Event(type)
+            e.arguments = arguments
+            window.dispatchEvent(e)
+            return rv
+        }
+    }
+    history.pushState = _wr('pushState')
+    history.replaceState = _wr('replaceState')
+    window.addEventListener('replaceState', () => { Info.get() })
+    window.addEventListener('pushState', () => { Info.get() })
 
     class Vedio {
+        /**
+         * 获取 vedio 视频的某 Part
+         * @param { dir, id, cid, part } vedio 
+         */
         static async part(vedio) {
-            let { dir, id: aid, cid, part } = vedio
-            part = part ? part : dir
-            let downloadInfo = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
+            const { dir, id: aid, cid, part } = vedio
+                , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
+                , durl = JSON.parse(res).data.durl
 
-            let durl = JSON.parse(downloadInfo).data.durl
             if (durl.length < 2) {
                 // 无分段
                 return [[[{ dir, part, out: part, url: durl[0].url }]]]
@@ -54,47 +87,47 @@
                 })]]
             }
         }
-        static async allPart(vedio) {
-            let { dir, id: aid } = vedio
-            let vedioInfo = await rp(`https://api.bilibili.com/x/web-interface/view?aid=${aid}`)
-            const { pages } = JSON.parse(vedioInfo).data
+        /**
+         * 获取 vedios 的所有 vedio 的全部 Part
+         * @param [{ dir, id },{ dir, id }] / { dir, id } vedios 
+         */
+        static async all(vedios) {
+            if (!Array.isArray(vedios)) {
+                vedios = [vedios]
+            }
+            return Promise.all(vedios.map(async vedio => {
+                const { dir, id: aid } = vedio
+                    , res = await rp(`https://api.bilibili.com/x/web-interface/view?aid=${aid}`)
+                    , { pages } = JSON.parse(res).data
 
-            return Promise.all(pages.map(async page => {
-                const { cid } = page
-                let { part } = page
-                part = part ? part : dir
-                let downloadInfo = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
+                return Promise.all(pages.map(async page => {
+                    const { cid, part } = page
+                        , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
+                        , durl = JSON.parse(res).data.durl
 
-                let durl = JSON.parse(downloadInfo).data.durl
-                if (durl.length < 2) {
-                    // 无分段
-                    return [[{ dir, part, out: part, url: durl[0].url }]]
-                } else {
-                    // 有分段
-                    return [durl.map((value, index) => {
-                        return { dir, part, out: `${part}-${index}`, url: value.url }
-                    })]
-                }
-            }))
-        }
-        static async allVedio(vedios) {
-            return Promise.all(vedios.map(async video => {
-                let res = await Vedio.allPart(video)
-                let ress = []
-                res.forEach(r => {
-                    ress.push(r[0])
-                })
-                return ress
+                    if (durl.length < 2) {
+                        // 无分段
+                        return [{ dir, part, out: part, url: durl[0].url }]
+                    } else {
+                        // 有分段
+                        return durl.map((value, index) => {
+                            return { dir, part, out: `${part}-${index}`, url: value.url }
+                        })
+                    }
+                }))
             }))
         }
     }
     class Bangumi {
+        /**
+         * 获取 bangumi 的某集
+         * @param { dir, id, part, episode } bangumi 
+         */
         static async part(bangumi) {
-            let { dir, id, part, episode } = bangumi
-            part = part ? part : dir
-            let downloadInfo = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
+            const { dir, id, part, episode } = bangumi
+                , res = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
+                , durl = JSON.parse(res).result.durl
 
-            let durl = JSON.parse(downloadInfo).result.durl
             if (durl.length < 2) {
                 return [[[{ dir, part, out: `第${episode}集-${part}`, url: durl[0].url }]]]
             } else {
@@ -103,150 +136,85 @@
                 })]]
             }
         }
-        static async allPart(bangumi) {
-            let { dir, epList } = bangumi
-
-            return Promise.all(epList.map(async page => {
-                const { id, title: episode } = page
-                const part = page.longTitle ? page.longTitle : page.long_title
-                let downloadInfo = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
-
-                let durl = JSON.parse(downloadInfo).result.durl
-                if (durl.length < 2) {
-                    return [[{ dir, part, out: `第${episode}集-${part}`, url: durl[0].url }]]
-                } else {
-                    return [durl.map((value, index) => {
-                        return { dir, part, out: `第${episode}集-${part}-${index}`, url: value.url }
-                    })]
-                }
-            }))
-        }
-        static async allBangumi(bangumis) {
+        /**
+         * 获取 bangumis 的所有 bangumi 的全集正片
+         * @param [{ dir, epList },{ dir, epList }] / { dir, epList } bangumis 
+         */
+        static async all(bangumis) {
+            if (!Array.isArray(bangumis)) {
+                bangumis = [bangumis]
+            }
             return Promise.all(bangumis.map(async bangumi => {
-                let bangumiInfo = await rp(`https://api.bilibili.com/pgc/web/season/section?season_id=${bangumi.id}`)
-                bangumi.epList = JSON.parse(bangumiInfo).result.main_section.episodes
-                let res = await Bangumi.allPart(bangumi)
-                let ress = []
-                res.forEach(r => {
-                    ress.push(r[0])
-                })
-                return ress
+                const { dir, id } = bangumi
+                let { epList } = bangumi
+                if (!epList) {
+                    let res = await rp(`https://api.bilibili.com/pgc/web/season/section?season_id=${id}`)
+                    if (JSON.parse(res).result.main_section) {
+                        epList = JSON.parse(res).result.main_section.episodes
+                    } else {
+                        epList = []
+                    }
+                }
+
+                return Promise.all(epList.map(async (page, index) => {
+                    const { id, title: episode } = page
+                        , part = page.longTitle ? page.longTitle : page.long_title
+                        , res = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
+                        , durl = JSON.parse(res).result.durl
+
+                    if (durl.length < 2) {
+                        return [{ dir, part, out: `第${episode}集-${part}`, url: durl[0].url }]
+                    } else {
+                        return durl.map((value, index) => {
+                            return { dir, part, out: `第${episode}集-${part}-${index}`, url: value.url }
+                        })
+                    }
+                }))
             }))
         }
     }
     class Info {
-        // @match       *://www.bilibili.com/video/av*
-        // @match       *://www.bilibili.com/bangumi/play/ep*
-        // @match       *://space.bilibili.com/*/favlist*
-        // @match       *://space.bilibili.com/*/bangumi*
-        // @match       *://space.bilibili.com/*/cinema*
+        /**
+         * 获取当前页面的对应功能列表
+         */
         static async get() {
-            let currentURL = window.location.href
+            const currentURL = window.location.href
             if (currentURL.search('space') > -1) {
-                let exporterTypes = []
-                // 收藏/订阅/追剧 批量
-                const up_mid = /\d+/.exec(currentURL)[0]
+                // 批量
                 if (currentURL.search('favlist') > -1) {
-                    // @match *://space.bilibili.com/*/favlist*
-                    // 收藏
-                    let infos = []
-                    const mediaList = await rp(`https://api.bilibili.com/medialist/gateway/base/created?pn=1&ps=100&up_mid=${up_mid}&is_space=0&jsonp=jsonp`)
-                    const favlists = JSON.parse(mediaList).data.list
-
-                    let media_id, media_count
-                    if (window.location.search) {
-                        media_id = /\d+/.exec(window.location.search)[0]
-                        for (let fav of favlists) {
-                            if (media_id == fav.id) {
-                                media_count = fav.media_count
-                            }
-                        }
-                    } else {
-                        media_id = favlists[0].id
-                        media_count = favlists[0].media_count
-                    }
-
-                    let maxPn = media_count / 20 + 1
-                    for (let pn = 1; pn < maxPn; pn++) {
-                        let res = await rp(`https://api.bilibili.com/medialist/gateway/base/spaceDetail?media_id=${media_id}&ps=20&pn=${pn}&keyword=&order=mtime&type=0&tid=0&jsonp=jsonp`)
-                        let medias = JSON.parse(res).data.medias
-                        for (let media of medias) {
-                            let { title: dir, id } = media
-                            infos.push({ dir, id })
-                        }
-                    }
-
-                    let infoss = await Vedio.allVedio(infos)
-                    // 页面选择列表
-                    exporterTypes.push('当前收藏夹')
-                    exporterTypes.push(Exporter.IDM(infoss))
-                    exporterTypes.push(Exporter.Aria2(infoss))
-                    exporterTypes.push(Exporter.Aria2RPC(infoss))
-                    Exporter.list(exporterTypes)
-                } else if (currentURL.search('bangumi') > -1) {
-                    // @match *://space.bilibili.com/*/favlist*
-                    // 追番
-                    let infos = []
-                    let type = 1
-                    let ts = Date.parse(new Date())
-                    let res = await rp(`https://api.bilibili.com/x/space/bangumi/follow/list?type=${type}&follow_status=0&pn=1&ps=15&vmid=${up_mid}&ts=${ts}`)
-                    const { pn: maxPn } = JSON.parse(res).data
-                    let { list } = JSON.parse(res).data
-                    // title, season_id, total_count
-                    list.forEach(bangumi => {
-                        let { title: dir, season_id: id, total_count } = bangumi
-                        infos.push({ dir, id, total_count })
-                    })
-                    for (let pn = 2; pn <= maxPn; pn++) {
-                        // 说明有多页，需要多次获取
-                        res = await rp(`https://api.bilibili.com/x/space/bangumi/follow/list?type=${type}&follow_status=0&pn=${pn}&ps=15&vmid=${up_mid}&ts=${ts}`)
-                        list = JSON.parse(res).data
-                        list.forEach(bangumi => {
-                            let { title: dir, season_id: id, total_count } = bangumi
-                            infos.push({ dir, id, total_count })
-                        })
-                    }
-
-                    console.log(infos)
-                    let infoss = await Bangumi.allBangumi(infos)
-                    // 页面选择列表
-                    exporterTypes.push('追剧')
-                    exporterTypes.push(Exporter.IDM(infoss))
-                    exporterTypes.push(Exporter.Aria2(infoss))
-                    exporterTypes.push(Exporter.Aria2RPC(infoss))
-                    Exporter.list(exporterTypes)
-                } else if (currentURL.search('cinema') > -1) {
-                    // @match *://space.bilibili.com/*/cinema*
-                    // 追剧 优化，与番剧差在 type 值
-                    let type = 2
+                    // 收藏页 @match *://space.bilibili.com/*/favlist*
+                    Exporter.getData(Info.favlist)
+                } else if (currentURL.search('bangumi') > -1 || currentURL.search('cinema') > -1) {
+                    // 追番 @match *://space.bilibili.com/*/bangumi*
+                    // 追剧 @match *://space.bilibili.com/*/cinema*
+                    Exporter.getData(Info.bangumisOrCinema)
                 }
             } else {
                 // 单个
                 if (currentURL.search('video') > -1) {
-                    // @match *://www.bilibili.com/video/av*
-                    // 视频
+                    // 视频 @match *://www.bilibili.com/video/av*
                     let avState = async function () {
                         // 单/全 Part
-                        if (window.__INITIAL_STATE__ && window.__INITIAL_STATE__.videoData.pages) {
-                            let exporterTypes = []
-                            let inital = window.__INITIAL_STATE__
-                                , { aid, videoData } = inital
-                            let p = window.location.search ? /\d+/.exec(window.location.search)[0] - 1 : 0
+                        if (window.__INITIAL_STATE__ && window.__INITIAL_STATE__.videoData && window.__INITIAL_STATE__.videoData.pages) {
+                            const { aid, videoData } = window.__INITIAL_STATE__
+                                , p = getParameter('p') ? getParameter('p') - 1 : 0
                                 , { cid, part } = videoData.pages[p]
-                                , total_count = videoData.pages.length
-                                , dir = document.querySelector('#viewbox_report h1').title
+                            let dir = document.querySelector('#viewbox_report h1').title
+                                , infos = []
+                                , exporterTypes = []
                             // 文件夹名称不可以包含 \/:?*"<>|
                             dir = dir.replace(/[\\\/:?*"<>|]/ig, '-')
-                            let infos = await Vedio.part({ dir, id: aid, total_count, cid, part })
-                            // 页面选择列表
+
+                            // 功能列表
                             // 当前 Part
+                            infos = await Vedio.part({ dir, id: aid, cid, part: part ? part : dir })
                             exporterTypes.push('此 Part')
                             exporterTypes.push(Exporter.IDM(infos))
                             exporterTypes.push(Exporter.Aria2(infos))
                             exporterTypes.push(Exporter.Aria2RPC(infos))
                             exporterTypes.push({})
                             // 全 Part
-                            infos = await Vedio.allPart({ dir, id: aid })
+                            infos = await Vedio.all({ dir, id: aid })
                             exporterTypes.push('全 Part')
                             exporterTypes.push(Exporter.IDM(infos))
                             exporterTypes.push(Exporter.Aria2(infos))
@@ -258,29 +226,29 @@
                     }
                     setTimeout(avState, 500)
                 } else if (currentURL.search('bangumi') > -1) {
-                    // @match *://www.bilibili.com/bangumi/play/ep*
-                    // 番剧
+                    // 番剧 @match *://www.bilibili.com/bangumi/play/ep*
                     let epStatus = async function () {
                         // 单/全集
-                        // 当前 epInfo，全 epList
                         if (window.__INITIAL_STATE__ && window.__INITIAL_STATE__.epInfo && window.__INITIAL_STATE__.epInfo.id > -1 && window.__INITIAL_STATE__.epList) {
-                            let exporterTypes = []
-                            // 当前单集
-                            let { id, title: episode, longTitle: part } = window.__INITIAL_STATE__.epInfo
-                                , dir = document.querySelector('.media-title').title
+                            const { id, title: episode, longTitle: part } = window.__INITIAL_STATE__.epInfo
+                            let dir = document.querySelector('.media-title').title
+                                , infos = []
+                                , exporterTypes = []
+                                , epList
                             // 文件夹名称不可以包含 \/:?*"<>|
                             dir = dir.replace(/[\\\/:?*"<>|]/ig, '-')
-                            let infos = await Bangumi.part({ dir, id, part, episode })
-                            // 页面列表
+
+                            // 功能列表
+                            // 单集
+                            infos = await Bangumi.part({ dir, id, part: part ? part : dir, episode })
                             exporterTypes.push('此集')
                             exporterTypes.push(Exporter.IDM(infos))
                             exporterTypes.push(Exporter.Aria2(infos))
                             exporterTypes.push(Exporter.Aria2RPC(infos))
                             exporterTypes.push({})
                             // 全集
-                            let epList = window.__INITIAL_STATE__.epList
-                            infos = await Bangumi.allPart({ dir, epList })
-                            console.log(infos)
+                            epList = window.__INITIAL_STATE__.epList
+                            infos = await Bangumi.all({ dir, epList })
                             exporterTypes.push('全集')
                             exporterTypes.push(Exporter.IDM(infos))
                             exporterTypes.push(Exporter.Aria2(infos))
@@ -294,9 +262,98 @@
                 }
             }
         }
+        /**
+         * 获取收藏页数据
+         */
+        static async favlist() {
+            // 收藏页 @match *://space.bilibili.com/*/favlist*
+            const up_mid = /\d+/.exec(window.location.href)[0]
+                , res = await rp(`https://api.bilibili.com/medialist/gateway/base/created?pn=1&ps=100&up_mid=${up_mid}&is_space=0&jsonp=jsonp`)
+                , favlists = JSON.parse(res).data.list
+            let media_id
+                , media_count
+                , maxPn
+                , infos = []
+                , infoss = []
+                , exporterTypes = []
+
+            if (window.location.search) {
+                media_id = getParameter('fid')
+                for (let fav of favlists) {
+                    if (media_id == fav.id) {
+                        media_count = fav.media_count
+                    }
+                }
+            } else {
+                media_id = favlists[0].id
+                media_count = favlists[0].media_count
+            }
+
+            maxPn = media_count / 20 + 1
+            for (let pn = 1; pn < maxPn; pn++) {
+                const res = await rp(`https://api.bilibili.com/medialist/gateway/base/spaceDetail?media_id=${media_id}&ps=20&pn=${pn}&keyword=&order=mtime&type=0&tid=0&jsonp=jsonp`)
+                    , medias = JSON.parse(res).data.medias
+                for (let media of medias) {
+                    let { title: dir, id } = media
+                    infos.push({ dir, id })
+                }
+            }
+
+            // 功能列表
+            infoss = await Vedio.all(infos)
+            exporterTypes.push('当前收藏夹')
+            exporterTypes.push(Exporter.IDM(infoss))
+            exporterTypes.push(Exporter.Aria2(infoss))
+            exporterTypes.push(Exporter.Aria2RPC(infoss))
+            Exporter.list(exporterTypes)
+        }
+        /**
+         * 获取追番/剧数据
+         */
+        static async bangumisOrCinema() {
+            // 追番 @match *://space.bilibili.com/*/banguimi*
+            // 追剧 @match *://space.bilibili.com/*/cinema*
+            const up_mid = /\d+/.exec(window.location.href)[0]
+                , type = window.location.href.search('bangumi') > -1 ? 1 : 2
+                , ts = Date.parse(new Date())
+                , res = await rp(`https://api.bilibili.com/x/space/bangumi/follow/list?type=${type}&follow_status=0&pn=1&ps=15&vmid=${up_mid}&ts=${ts}`)
+                , { list: bangumis, ps, total } = JSON.parse(res).data
+            let maxPn
+                , infos = []
+                , infoss = []
+                , exporterTypes = []
+
+            bangumis.forEach(bangumi => {
+                let { title: dir, season_id: id } = bangumi
+                infos.push({ dir, id })
+            })
+
+            maxPn = total / ps + 1
+            for (let pn = 2; pn <= maxPn; pn++) {
+                // 说明有多页，需要多次获取
+                const res = await rp(`https://api.bilibili.com/x/space/bangumi/follow/list?type=${type}&follow_status=0&pn=${pn}&ps=15&vmid=${up_mid}&ts=${ts}`)
+                    , { list: bangumis } = JSON.parse(res).data
+                bangumis.forEach(bangumi => {
+                    let { title: dir, season_id: id } = bangumi
+                    infos.push({ dir, id })
+                })
+            }
+
+            // 功能列表
+            infoss = await Bangumi.all(infos)
+            exporterTypes.push('追剧')
+            exporterTypes.push(Exporter.IDM(infoss))
+            exporterTypes.push(Exporter.Aria2(infoss))
+            exporterTypes.push(Exporter.Aria2RPC(infoss))
+            Exporter.list(exporterTypes)
+        }
     }
 
     class Exporter {
+        /**
+         * 以 IDM 方式导出
+         * @param {Array} infos 
+         */
         static IDM(infos) {
             let data = []
             infos.map(info => info.map(pages => pages.map(page => {
@@ -309,6 +366,10 @@
                 href: URL.createObjectURL(new Blob([data.join('')]))
             }
         }
+        /**
+         * 以 Aria2 方式导出
+         * @param {Array} infos 
+         */
         static Aria2(infos) {
             let data = []
             infos.map(info => info.map(pages => pages.map(page => {
@@ -321,27 +382,30 @@
                 href: URL.createObjectURL(new Blob([data.join('')]))
             }
         }
+        /**
+         * 将数据发送到 Aria2RPC
+         * @param {Array} infos 
+         */
         static Aria2RPC(infos) {
             return {
                 textContent: 'Aria2RPC',
                 href: '',
                 onclick: function () {
                     infos.map(info => info.map(pages => pages.map(page => {
-                        let rpcStatus = document.getElementById('rpcStatus')
-                            , { dir, out, url } = page
+                        let { dir, out, url } = page
+                            , rpcStatus = document.getElementById('rpcStatus')
+                            , xhr = new XMLHttpRequest()
 
-                        let xhr = new XMLHttpRequest()
-                        xhr.onloadstart = e => {
+                        xhr.onloadstart = () => {
                             rpcStatus.innerHTML = '<p>发送请求</p>'
                         }
-                        xhr.onload = e => {
+                        xhr.onload = () => {
                             rpcStatus.innerHTML = '<p>请求完成</p>'
                         }
-                        xhr.onerror = e => {
+                        xhr.onerror = (e) => {
                             rpcStatus.innerHTML = `<p>请求出错:${e}</p>`
-                            console.log(e)
                         }
-                        xhr.ontimeout = e => {
+                        xhr.ontimeout = () => {
                             rpcStatus.innerHTML += '<p>请求超时</p>'
                         }
                         xhr.open('POST', `${ARIA2RPC}`, true);
@@ -360,6 +424,20 @@
                 }
             }
         }
+        /**
+         * 点击按钮再获取数据
+         * @param {function} func 
+         */
+        static getData(func) {
+            Exporter.list([{
+                textContent: '获取数据',
+                onclick: func
+            }])
+        }
+        /**
+         * 功能列表
+         * @param {Array} types 
+         */
         static list(types) {
             let dd = document.createElement('div')
             dd.style.backgroundColor = '#00A1D6'
@@ -374,6 +452,7 @@
             rpcStatus.id = 'rpcStatus'
             rpcStatus.style.color = 'red'
             dd.appendChild(rpcStatus)
+
             for (let i of types) {
                 dd.appendChild(createA(i))
             }
@@ -387,6 +466,11 @@
                 }
             }
             setTimeout(wait, 1000)
+
+            /**
+             * 创建按钮 dom
+             * @param {object} goal 
+             */
             function createA(goal) {
                 let { textContent, download, href, onclick } = goal
                 let a = document.createElement('a')
