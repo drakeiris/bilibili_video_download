@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name        bilibili_vedio_download
+// @name        bilibili_video_download
 // @namespace   http://evgo2017.com/
-// @homepageURL https://github.com/evgo2017/bilibili_vedio_download
-// @supportURL  https://github.com/evgo2017/bilibili_vedio_download/issues
+// @homepageURL https://github.com/evgo2017/bilibili_video_download
+// @supportURL  https://github.com/evgo2017/bilibili_video_download/issues
 // @description bilibili/哔哩哔哩视频/番剧下载，单/多P下载，单/多集下载，多视频/番剧正片下载，大会员（本身是），IDM，Aria2，Aria2RPC 导出方式。详细内容请在 Github 查看。参考资料：https://github.com/Xmader/bilitwin/ && https://github.com/blogwy/BilibiliVideoDownload
 // @match       *://www.bilibili.com/video/av*
 // @match       *://www.bilibili.com/bangumi/play/ep*
@@ -21,7 +21,7 @@
 (async function () {
     'use strict';
     const REFERER = 'https://www.bilibili.com'
-        , BASEDIR = '/data/' // 末尾一定要有 '/'
+        , BASEDIR = './' // 末尾一定要有 '/'，根据自己需求更改此基础地址
         , ARIA2RPC = 'http://localhost:6800/jsonrpc'
         , ARIA2TOKEN = '' // Aria2 Secret Token
         , QN = 116
@@ -67,13 +67,13 @@
     window.addEventListener('replaceState', () => { Info.get() })
     window.addEventListener('pushState', () => { Info.get() })
 
-    class Vedio {
+    class Video {
         /**
-         * 获取 vedio 视频的某 Part
-         * @param { dir, id, cid, part } vedio 
+         * 获取 video 视频的某 Part
+         * @param { dir, id, cid, part } video 
          */
-        static async part(vedio) {
-            const { dir, id: aid, cid, part } = vedio
+        static async part(video) {
+            const { dir, id: aid, cid, part } = video
                 , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
                 , durl = JSON.parse(res).data.durl
 
@@ -88,15 +88,15 @@
             }
         }
         /**
-         * 获取 vedios 的所有 vedio 的全部 Part
-         * @param [{ dir, id },{ dir, id }] / { dir, id } vedios 
+         * 获取 videos 的所有 video 的全部 Part
+         * @param [{ dir, id },{ dir, id }] / { dir, id } videos 
          */
-        static async all(vedios) {
-            if (!Array.isArray(vedios)) {
-                vedios = [vedios]
+        static async all(videos) {
+            if (!Array.isArray(videos)) {
+                videos = [videos]
             }
-            return Promise.all(vedios.map(async vedio => {
-                const { dir, id: aid } = vedio
+            return Promise.all(videos.map(async video => {
+                const { dir, id: aid } = video
                     , res = await rp(`https://api.bilibili.com/x/web-interface/view?aid=${aid}`)
                     , { pages } = JSON.parse(res).data
 
@@ -207,14 +207,14 @@
 
                             // 功能列表
                             // 当前 Part
-                            infos = await Vedio.part({ dir, id: aid, cid, part: part ? part : dir })
+                            infos = await Video.part({ dir, id: aid, cid, part: part ? part : dir })
                             exporterTypes.push('此 Part')
                             exporterTypes.push(Exporter.IDM(infos))
                             exporterTypes.push(Exporter.Aria2(infos))
                             exporterTypes.push(Exporter.Aria2RPC(infos))
                             exporterTypes.push({})
                             // 全 Part
-                            infos = await Vedio.all({ dir, id: aid })
+                            infos = await Video.all({ dir, id: aid })
                             exporterTypes.push('全 Part')
                             exporterTypes.push(Exporter.IDM(infos))
                             exporterTypes.push(Exporter.Aria2(infos))
@@ -300,7 +300,7 @@
             }
 
             // 功能列表
-            infoss = await Vedio.all(infos)
+            infoss = await Video.all(infos)
             exporterTypes.push('当前收藏夹')
             exporterTypes.push(Exporter.IDM(infoss))
             exporterTypes.push(Exporter.Aria2(infoss))
@@ -439,27 +439,31 @@
          * @param {Array} types 
          */
         static list(types) {
-            let dd = document.createElement('div')
-            dd.style.backgroundColor = '#00A1D6'
-            dd.style.zIndex = 999
-            dd.style.position = 'fixed'
-            dd.style.width = '76px'
-            dd.style.fontSize = '1.2em'
-            dd.textContent = '下载方式'
-            dd.style.top = '70px'
-
-            let rpcStatus = document.createElement('p')
-            rpcStatus.id = 'rpcStatus'
-            rpcStatus.style.color = 'red'
-            dd.appendChild(rpcStatus)
-
-            for (let i of types) {
-                dd.appendChild(createA(i))
-            }
-            dd.appendChild(createA({}))
-            dd.appendChild(createA({ textContent: '帮助', href: 'https://github.com/evgo2017/bilibili_vedio_download' }))
             let wait = () => {
                 if (document.body) {
+                    if (document.getElementById('bvdlist')) {
+                        document.body.removeChild(document.getElementById('bvdlist'))
+                    }
+                    let dd = document.createElement('div')
+                    dd.style.backgroundColor = '#00A1D6'
+                    dd.style.zIndex = 999
+                    dd.style.position = 'fixed'
+                    dd.style.width = '76px'
+                    dd.style.fontSize = '1.2em'
+                    dd.textContent = '下载方式'
+                    dd.style.top = '70px'
+                    dd.id = 'bvdlist'
+
+                    let rpcStatus = document.createElement('p')
+                    rpcStatus.id = 'rpcStatus'
+                    rpcStatus.style.color = 'red'
+                    dd.appendChild(rpcStatus)
+
+                    for (let i of types) {
+                        dd.appendChild(createA(i))
+                    }
+                    dd.appendChild(createA({}))
+                    dd.appendChild(createA({ textContent: '帮助', href: 'https://github.com/evgo2017/bilibili_video_download' }))
                     document.body.appendChild(dd)
                 } else {
                     setTimeout(wait, 1000)

@@ -20,13 +20,13 @@ const SESSDATA = ''
         'Cookie': `SESSDATA=${SESSDATA}`
         , 'Referer': REFERER
     }
-    , BASEDIR = '/share/CACHEDEV2_DATA/Vedio/Download/' // 必须以 '/' 结尾
+    , BASEDIR = '/share/CACHEDEV2_DATA/Video/Download/' // 必须以 '/' 结尾
     , ARIA2RPC = 'http://localhost:6800/jsonrpc'
 
 class Info {
-    static async Vedio(av) {
-        let vedioInfo = await rp(`https://api.bilibili.com/x/web-interface/view?aid=${av}`)
-        const { aid, title, pages } = JSON.parse(vedioInfo).data
+    static async Video(av) {
+        let videoInfo = await rp(`https://api.bilibili.com/x/web-interface/view?aid=${av}`)
+        const { aid, title, pages } = JSON.parse(videoInfo).data
 
         return Promise.all(pages.map(async page => {
             const { cid } = page
@@ -130,7 +130,7 @@ class Info {
     static async get(type) {
         const sss = readlineSync.question('请输入视频的 av 号或者番剧的 season_id（以空格分隔）:').split(' ')
         if (type == '0') {
-            return Promise.all(avs.map(async av => await Info.Vedio(av)))
+            return Promise.all(avs.map(async av => await Info.Video(av)))
         } else if (type == '1') {
             return Promise.all(sss.map(async ss => await Info.Bangumi(ss)))
         } else {
@@ -181,10 +181,10 @@ class Exporter {
 }
 
 (async () => {
-    const vedioType = readlineSync.keyInSelect(['视频', '番剧'], '请选择视频类型:')
-    if (vedioType == 0) return
+    const videoType = readlineSync.keyInSelect(['视频', '番剧'], '请选择视频类型:')
+    if (videoType == 0) return
 
-    let infos = await Info.get(vedioType)
+    let infos = await Info.get(videoType)
     Info.show(infos)
 
     if (infos.length < 2) {
@@ -210,3 +210,4 @@ class Exporter {
         default: break;
     }
 })()
+
