@@ -86,6 +86,20 @@
     window.addEventListener('replaceState', () => { Info.get() })
     window.addEventListener('pushState', () => { Info.get() })
     /**
+     * 单集 Part QN 以播放器的 QN 为准，其余以设置的 QN 为准
+     */
+    const changePartQN = setInterval(() => {
+        let lis = document.querySelectorAll('.bilibili-player-video-quality-menu .bui-select-item')
+        if (lis.length) {
+            clearInterval(changePartQN)
+            lis.forEach(li => {
+                li.addEventListener('click', () => {
+                    Info.get()
+                })
+            })
+        }
+    }, 500)
+    /**
      * 直到 condition 条件成立返回
      * @param {function} condition 
      */
@@ -106,7 +120,9 @@
      * @param {string} value 
      */
     function setCookie(name, value) {
-        document.cookie = name + "=" + escape(value) + ";path=/;"
+        let date = new Date()
+        date.setTime(date.getTime() + 2 * 365 * 24 * 60 * 60 * 1000)
+        document.cookie = name + "=" + escape(value) + ";path=/;" + 'expires=' + date.toGMTString() +';'
     }
     /**
      * 得到 cookie
@@ -123,7 +139,8 @@
          * @param { dir, id, cid, part } video
          */
         static async part(video) {
-            const { dir, id: aid, cid, part } = video
+            const QN = getCookie('CURRENT_QUALITY')
+                , { dir, id: aid, cid, part } = video
                 , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
                 , durl = JSON.parse(res).data.durl
 
@@ -174,7 +191,8 @@
          * @param { dir, id, part, episode } bangumi
          */
         static async part(bangumi) {
-            const { dir, id, part, episode } = bangumi
+            const QN = getCookie('CURRENT_QUALITY')
+                , { dir, id, part, episode } = bangumi
                 , res = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
                 , durl = JSON.parse(res).result.durl
 
@@ -531,7 +549,7 @@
                 st.style.left = '80px'
 
                 const inputs = [
-                    { textContent: `基础路径（以'\'结尾）`, name: 'BASEDIR' }
+                    { textContent: `基础路径（以 '/\' 结尾）`, name: 'BASEDIR' }
                     , { textContent: 'ARIA2TOKEN', name: 'ARIA2TOKEN' }
                     , { textContent: 'ARIA2RPC', name: 'ARIA2RPC' }
                     , { textContent: '清晰度（默认最高）', name: 'QN' }
