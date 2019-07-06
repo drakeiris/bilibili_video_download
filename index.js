@@ -3,7 +3,7 @@
 // @namespace   http://evgo2017.com/
 // @homepageURL https://github.com/evgo2017/bilibili_video_download
 // @supportURL  https://github.com/evgo2017/bilibili_video_download/issues
-// @description bilibili/哔哩哔哩视频/番剧下载，单/多P下载，单/多集下载，多视频/番剧正片下载，大会员（本身是），IDM，Aria2，Aria2RPC 导出方式，LocalStorage 方式保存配置。详细内容请在 Github 查看。参考资料：https://github.com/Xmader/bilitwin/ && https://github.com/blogwy/BilibiliVideoDownload
+// @description bilibili/哔哩哔哩视频/番剧下载，单/多P下载，单/多集下载，多视频/番剧正片下载，大会员（本身是），IDM，Aria2，Aria2RPC 导出方式，Local Storage 方式保存配置。详细内容请在 Github 查看。参考资料：https://github.com/Xmader/bilitwin/ && https://github.com/blogwy/BilibiliVideoDownload
 // @match       *://www.bilibili.com/video/av*
 // @match       *://www.bilibili.com/bangumi/play/ep*
 // @match       *://www.bilibili.com/bangumi/play/ss*
@@ -119,7 +119,7 @@
         return res
     }
     /**
-     * 设置 Cookie
+     * 设置 Cookies
      * @param {string} name 
      * @param {string} value 
      */
@@ -129,7 +129,7 @@
         document.cookie = name + "=" + escape(value) + ";path=/;" + 'expires=' + date.toGMTString() + ';'
     }
     /**
-     * 得到 cookie
+     * 得到 Cookies
      * @param {string} name 
      */
     function getCookie(name) {
@@ -137,7 +137,7 @@
         return (arr = document.cookie.match(reg)) ? unescape(arr[2]) : null
     }
     /**
-     * 设置 LocalStorage
+     * 设置 Local Storage
      * @param {string} name 
      * @param {string} value 
      */
@@ -147,7 +147,7 @@
         localStorage.setItem(LocalStorageName, JSON.stringify(evgoBvd))
     }
     /**
-     * 得到 cookie
+     * 得到 Local Storage
      * @param {string} name 
      */
     function getLocalStorage(name) {
