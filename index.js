@@ -3,14 +3,14 @@
 // @namespace   http://evgo2017.com/
 // @homepageURL https://github.com/evgo2017/bilibili_video_download
 // @supportURL  https://github.com/evgo2017/bilibili_video_download/issues
-// @description bilibili/哔哩哔哩视频/番剧下载，单/多P下载，单/多集下载，多视频/番剧正片下载，大会员（本身是），IDM，Aria2，Aria2RPC 导出方式。详细内容请在 Github 查看。参考资料：https://github.com/Xmader/bilitwin/ && https://github.com/blogwy/BilibiliVideoDownload
+// @description bilibili/哔哩哔哩视频/番剧下载，单/多P下载，单/多集下载，多视频/番剧正片下载，大会员（本身是），IDM，Aria2，Aria2RPC 导出方式，LocalStorage 方式保存配置。详细内容请在 Github 查看。参考资料：https://github.com/Xmader/bilitwin/ && https://github.com/blogwy/BilibiliVideoDownload
 // @match       *://www.bilibili.com/video/av*
 // @match       *://www.bilibili.com/bangumi/play/ep*
 // @match       *://www.bilibili.com/bangumi/play/ss*
 // @match       *://space.bilibili.com/*/favlist*
 // @match       *://space.bilibili.com/*/bangumi*
 // @match       *://space.bilibili.com/*/cinema*
-// @version     1.0.0
+// @version     1.1.1
 // @license     MIT License
 // @author      evgo2017
 // @copyright   evgo2017
@@ -23,24 +23,28 @@
     /**
      * 用户配置
      */
+    const LocalStorageName = 'evgoBvd'
     const defaultOptions = new Map([
         ['BASEDIR', './']
         , ['ARIA2TOKEN', '']
         , ['ARIA2RPC', 'http://localhost:6800/jsonrpc']
-        , ['QN', '116']
+        , ['QN', '120']
     ])
-    for (let [key, value] of defaultOptions) {
-        if (!getCookie(key)) {
-            setCookie(key, value)
+    if (!localStorage.getItem(LocalStorageName)) {
+        let evgoBvd = {}
+        for (let [key, value] of defaultOptions) {
+            evgoBvd[key] = value
         }
+        localStorage.setItem(LocalStorageName, JSON.stringify(evgoBvd))
     }
 
     let BASEDIR, ARIA2TOKEN, ARIA2RPC, QN
     function refreshOptions() {
-        BASEDIR = getCookie('BASEDIR')
-        ARIA2TOKEN = getCookie('ARIA2TOKEN')
-        ARIA2RPC = getCookie('ARIA2RPC')
-        QN = getCookie('QN')
+        let evgoBvd = JSON.parse(localStorage.getItem(LocalStorageName))
+        BASEDIR = evgoBvd.BASEDIR
+        ARIA2TOKEN = evgoBvd.ARIA2TOKEN
+        ARIA2RPC = evgoBvd.ARIA2RPC
+        QN = evgoBvd.QN
     }
     refreshOptions()
 
@@ -115,14 +119,14 @@
         return res
     }
     /**
-     * 设置 cookie
+     * 设置 Cookie
      * @param {string} name 
      * @param {string} value 
      */
     function setCookie(name, value) {
         let date = new Date()
         date.setTime(date.getTime() + 2 * 365 * 24 * 60 * 60 * 1000)
-        document.cookie = name + "=" + escape(value) + ";path=/;" + 'expires=' + date.toGMTString() +';'
+        document.cookie = name + "=" + escape(value) + ";path=/;" + 'expires=' + date.toGMTString() + ';'
     }
     /**
      * 得到 cookie
@@ -131,6 +135,24 @@
     function getCookie(name) {
         let arr, reg = new RegExp("(^| )" + name + "=([^;]*)(;|$)")
         return (arr = document.cookie.match(reg)) ? unescape(arr[2]) : null
+    }
+    /**
+     * 设置 LocalStorage
+     * @param {string} name 
+     * @param {string} value 
+     */
+    function setLocalStorage(name, value) {
+        let evgoBvd = JSON.parse(localStorage.getItem(LocalStorageName))
+        evgoBvd[name] = value
+        localStorage.setItem(LocalStorageName, JSON.stringify(evgoBvd))
+    }
+    /**
+     * 得到 cookie
+     * @param {string} name 
+     */
+    function getLocalStorage(name) {
+        let evgoBvd = JSON.parse(localStorage.getItem(LocalStorageName))
+        return evgoBvd.hasOwnProperty(name) ? evgoBvd[name] : null
     }
 
     class Video {
@@ -549,7 +571,7 @@
                 st.style.left = '80px'
 
                 const inputs = [
-                    { textContent: `基础路径（以 '/\' 结尾）`, name: 'BASEDIR' }
+                    { textContent: `基础路径（以 “/\” 结尾）`, name: 'BASEDIR' }
                     , { textContent: 'ARIA2TOKEN', name: 'ARIA2TOKEN' }
                     , { textContent: 'ARIA2RPC', name: 'ARIA2RPC' }
                     , { textContent: '清晰度（默认最高）', name: 'QN' }
@@ -595,7 +617,7 @@
              */
             function createInput(goal) {
                 const { textContent, name } = goal
-                let value = getCookie(name)
+                let value = getLocalStorage(name)
                     , div = document.createElement('div')
                     , label = document.createElement('label')
                     , input = document.createElement('input')
@@ -613,7 +635,7 @@
                 input.value = value
                 input.name = name
                 input.onblur = function () {
-                    setCookie(name, input.value)
+                    setLocalStorage(name, input.value)
                     refreshOptions()
                     Info.get()
                 }
