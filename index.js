@@ -29,6 +29,7 @@
         , ['ARIA2TOKEN', '']
         , ['ARIA2RPC', 'http://localhost:6800/jsonrpc']
         , ['QN', '120']
+        , ['DownCoverPic', '0']
     ])
     if (!localStorage.getItem(LocalStorageName)) {
         let evgoBvd = {}
@@ -36,15 +37,25 @@
             evgoBvd[key] = value
         }
         localStorage.setItem(LocalStorageName, JSON.stringify(evgoBvd))
+    } else {
+        let evgoBvd = JSON.parse(localStorage.getItem(LocalStorageName))
+        for (let [key, value] of defaultOptions) {
+            if (!evgoBvd.hasOwnProperty(key)) {
+                evgoBvd[key] = value
+            }
+        }
+        localStorage.setItem(LocalStorageName, JSON.stringify(evgoBvd))
     }
 
-    let BASEDIR, ARIA2TOKEN, ARIA2RPC, QN
+    /* 刷新配置项 */
+    let BASEDIR, ARIA2TOKEN, ARIA2RPC, QN, DownCoverPic
     function refreshOptions() {
         let evgoBvd = JSON.parse(localStorage.getItem(LocalStorageName))
         BASEDIR = evgoBvd.BASEDIR
         ARIA2TOKEN = evgoBvd.ARIA2TOKEN
         ARIA2RPC = evgoBvd.ARIA2RPC
         QN = evgoBvd.QN
+        DownCoverPic = parseInt(evgoBvd.DownCoverPic)
     }
     refreshOptions()
 
@@ -105,7 +116,7 @@
     }, 500)
     /**
      * 直到 condition 条件成立返回
-     * @param {function} condition 
+     * @param {function} condition
      */
     const waitFor = async function (condition) {
         let res = await new Promise(resolve => {
@@ -120,8 +131,8 @@
     }
     /**
      * 设置 Cookies
-     * @param {string} name 
-     * @param {string} value 
+     * @param {string} name
+     * @param {string} value
      */
     function setCookie(name, value) {
         let date = new Date()
@@ -130,7 +141,7 @@
     }
     /**
      * 得到 Cookies
-     * @param {string} name 
+     * @param {string} name
      */
     function getCookie(name) {
         let arr, reg = new RegExp("(^| )" + name + "=([^;]*)(;|$)")
@@ -138,8 +149,8 @@
     }
     /**
      * 设置 Local Storage
-     * @param {string} name 
-     * @param {string} value 
+     * @param {string} name
+     * @param {string} value
      */
     function setLocalStorage(name, value) {
         let evgoBvd = JSON.parse(localStorage.getItem(LocalStorageName))
@@ -148,7 +159,7 @@
     }
     /**
      * 得到 Local Storage
-     * @param {string} name 
+     * @param {string} name
      */
     function getLocalStorage(name) {
         let evgoBvd = JSON.parse(localStorage.getItem(LocalStorageName))
@@ -166,7 +177,8 @@
                 , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
                 , durl = JSON.parse(res).data.durl
 
-            let urls = [{ dir, out: `${part}.${pic.split('.').pop()}`, url: pic }]
+            let urls = []
+            if (DownCoverPic) urls.push({ dir, out: `${part}.${pic.split('.').pop()}`, url: pic })
             if (durl.length < 2) {
                 // 无分段
                 urls.push({ dir, out: `${part}.FLV`, url: durl[0].url })
@@ -196,7 +208,8 @@
                         , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
                         , durl = JSON.parse(res).data.durl
 
-                    let urls = [{ dir, out: `${part}.${pic.split('.').pop()}`, url: pic }]
+                    let urls = []
+                    if (DownCoverPic) urls.push({ dir, out: `${part}.${pic.split('.').pop()}`, url: pic })
                     if (durl.length < 2) {
                         // 无分段
                         urls.push({ dir, out: `${part}.FLV`, url: durl[0].url })
@@ -222,7 +235,8 @@
                 , res = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
                 , durl = JSON.parse(res).result.durl
 
-            let urls = [{ dir, out: `第${episode}集-${part}.${cover.split('.').pop()}`, url: cover }]
+            let urls = []
+            if (DownCoverPic) urls.push({ dir, out: `第${episode}集-${part}.${cover.split('.').pop()}`, url: cover })
             if (durl.length < 2) {
                 // 无分段
                 urls.push({ dir, out: `第${episode}集-${part}.FLV`, url: durl[0].url })
@@ -260,7 +274,8 @@
                         , res = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
                         , durl = JSON.parse(res).result.durl
 
-                    let urls = [{ dir, out: `第${episode}集-${part}.${cover.split('.').pop()}`, url: cover }]
+                    let urls = []
+                    if (DownCoverPic) urls.push({ dir, out: `第${episode}集-${part}.${cover.split('.').pop()}`, url: cover })
                     if (durl.length < 2) {
                         // 无分段
                         urls.push({ dir, out: `第${episode}集-${part}.FLV`, url: durl[0].url })
@@ -573,7 +588,28 @@
             */
             function setting() {
                 let st = document.createElement('div')
+                    , options = document.createElement('ul')
                     , meta = document.createElement('p')
+
+                /* 设置输入框 */
+                const inputs = [
+                    { textContent: `基础路径（以 “/\” 结尾）`, name: 'BASEDIR' }
+                    , { textContent: 'ARIA2TOKEN', name: 'ARIA2TOKEN' }
+                    , { textContent: 'ARIA2RPC', name: 'ARIA2RPC' }
+                    , { textContent: '清晰度（默认最高）', name: 'QN' }
+                ]
+                for (let i of inputs) {
+                    options.appendChild(createInput(i))
+                }
+                /* 设置“单选” */
+                const checks = [
+                    { textContent: '下载封面图（此选项在部分页面切换时会卡顿，下个版本更新）', name: 'DownCoverPic' }
+                ]
+                for (let i of checks) {
+                    options.appendChild(createCheckbox(i))
+                }
+
+                /* 设置样式 */
                 st.id = 'bvdsetting'
                 st.style.backgroundColor = '#00A1D6'
                 st.style.zIndex = 999
@@ -583,19 +619,16 @@
                 st.textContent = '设置'
                 st.style.top = '70px'
                 st.style.left = '80px'
-
-                const inputs = [
-                    { textContent: `基础路径（以 “/\” 结尾）`, name: 'BASEDIR' }
-                    , { textContent: 'ARIA2TOKEN', name: 'ARIA2TOKEN' }
-                    , { textContent: 'ARIA2RPC', name: 'ARIA2RPC' }
-                    , { textContent: '清晰度（默认最高）', name: 'QN' }
-                ]
-                for (let i of inputs) {
-                    st.appendChild(createInput(i))
+                let lis = options.getElementsByTagName('li')
+                for (let i of lis) {
+                    i.style.marginTop = '10px'
                 }
 
                 meta.style.color = 'red'
+                meta.style.marginTop = '10px'
                 meta.innerHTML = '修改即生效'
+
+                st.appendChild(options)
                 st.appendChild(meta)
                 document.body.appendChild(st)
             }
@@ -632,7 +665,7 @@
             function createInput(goal) {
                 const { textContent, name } = goal
                 let value = getLocalStorage(name)
-                    , div = document.createElement('div')
+                    , li = document.createElement('li')
                     , label = document.createElement('label')
                     , input = document.createElement('input')
 
@@ -654,12 +687,41 @@
                     Info.get()
                 }
 
-                div.style.marginTop = '15px'
-                div.style.marginBottom = '10px'
+                li.appendChild(label)
+                li.appendChild(input)
+                return li
+            }
+            /**
+             * 创建选择
+             */
+            function createCheckbox(goal) {
+                const { textContent, name } = goal
+                let value = parseInt(getLocalStorage(name))
+                    , li = document.createElement('li')
+                    , label = document.createElement('label')
+                    , input = document.createElement('input')
 
-                div.appendChild(label)
-                div.appendChild(input)
-                return div
+                label.setAttribute("for", name)
+                label.innerHTML = `${textContent}`
+                label.style.marginLeft = '5px'
+
+                input.type = 'checkbox'
+                input.style['-webkit-appearance'] = "checkbox"
+                input.name = name
+                if (value) input.checked = "checked"
+                input.onclick = function () {
+                    if (this.checked) {
+                        setLocalStorage(name, '1')
+                    } else {
+                        setLocalStorage(name, '0')
+                    }
+                    refreshOptions()
+                    Info.get()
+                }
+
+                li.appendChild(input)
+                li.appendChild(label)
+                return li
             }
         }
     }

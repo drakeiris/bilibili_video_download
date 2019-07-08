@@ -85,7 +85,7 @@ B站视频下载，油猴插件
 - [x] Part/集分段下载
   - [ ] 分段自动合并
 - [ ] 其他下载
-  - [ ] 视频封面图
+  - [x] 视频封面图
   - [ ] 弹幕（没有弹幕的 Bilibili 是没有灵魂的）
     - [ ] 定时更新弹幕
 - [x] 功能列表
@@ -191,7 +191,9 @@ Linux 下我的方法：
 
 建议 `QN` 设置为 `120`，即使视频达不到此清晰度，但会默认返回个人账号和视频支持的最高清晰度。
 
-> 感谢 @[RJTT233](<https://github.com/RJTT233> )，[issues](<https://github.com/evgo2017/bilibili_video_download/issues/4> ) 补充的 4K 信息
+> 感谢 @[RJTT233](<https://github.com/RJTT233> )，[issues](<https://github.com/evgo2017/bilibili_video_download/issues/4> ) 补充的 4K 信息 --2019/07/07
+>
+> 目前返回的接口返回的 QN 最大为 116，之后找到合适的接口会完善 --2019/07/08
 
 | qn（quality） | 清晰度       | 权限   |
 | ------------- | ------------ | ------ |

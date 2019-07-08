@@ -2,6 +2,17 @@
 
 感谢大家的的使用以及建议！
 
+## 2019/07/08
+
+- 增加：封面图下载功能
+
+- 增加：设置页面->开启/关闭 `下载封面图 ` 功能
+
+  ```
+  因为番剧页面 -webkit-appearance: none 的存在，需要对 checkbox 进行设置 -webkit-appearance: checkbox，所以导致在部分番剧页面切换开启/关闭时导致较为明显的卡顿。
+  究其原因，与更新配置后重建 DOM 的行为分不开，之后会解决这个问题
+  ```
+
 ## 2019/07/07
 
 - 增加：4K QN（感谢 @[RJTT233 ](<https://github.com/RJTT233>) ，[issues](<https://github.com/evgo2017/bilibili_video_download/issues/4>)）
@@ -19,7 +30,7 @@
 
   ```
   通过设置 Cookies 的方式，来保存用户设置，避免代码更新删除用户配置。
-  其实可以使用 GM_setValue && GM_getValue 方法，但是由于代码需要页面的上下文来获取一些数据，所以必须设置 grant 为 none，故不可用 GM_* 等功能。
+  其实可以使用 GM_setValue && GM_getValue 方法，但是由于代码需要页面的上下文来获取一些数据，所以必须设置 grant 为 none，故不可用 GM_* 等功能
   ```
 
 - 完善： QN，灵活设置当前单集的清晰度，而不是一直为默认值
