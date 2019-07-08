@@ -158,23 +158,25 @@
     class Video {
         /**
          * 获取 video 视频的某 Part
-         * @param { dir, id, cid, part } video
+         * @param { dir, id, cid, part, pic } video
          */
         static async part(video) {
             const QN = getCookie('CURRENT_QUALITY')
-                , { dir, id: aid, cid, part } = video
+                , { dir, id: aid, cid, part, pic } = video
                 , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
                 , durl = JSON.parse(res).data.durl
 
+            let urls = [{ dir, out: `${part}.${pic.split('.').pop()}`, url: pic }]
             if (durl.length < 2) {
                 // 无分段
-                return [[[{ dir, part, out: part, url: durl[0].url }]]]
+                urls.push({ dir, out: `${part}.FLV`, url: durl[0].url })
             } else {
                 // 有分段
-                return [[durl.map((value, index) => {
-                    return { dir, part, out: `${part}-${index}`, url: value.url }
-                })]]
+                durl.forEach((value, index) => {
+                    urls.push({ dir, out: `${part}-${index}.FLV`, url: value.url })
+                })
             }
+            return [[urls]]
         }
         /**
          * 获取 videos 的所有 video 的全部 Part
@@ -187,22 +189,24 @@
             return Promise.all(videos.map(async video => {
                 const { dir, id: aid } = video
                     , res = await rp(`https://api.bilibili.com/x/web-interface/view?aid=${aid}`)
-                    , { pages } = JSON.parse(res).data
+                    , { pages, pic } = JSON.parse(res).data
 
                 return Promise.all(pages.map(async page => {
                     const { cid, part } = page
                         , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
                         , durl = JSON.parse(res).data.durl
 
+                    let urls = [{ dir, out: `${part}.${pic.split('.').pop()}`, url: pic }]
                     if (durl.length < 2) {
                         // 无分段
-                        return [{ dir, part, out: part, url: durl[0].url }]
+                        urls.push({ dir, out: `${part}.FLV`, url: durl[0].url })
                     } else {
                         // 有分段
-                        return durl.map((value, index) => {
-                            return { dir, part, out: `${part}-${index}`, url: value.url }
+                        durl.forEach((value, index) => {
+                            urls.push({ dir, out: `${part}-${index}.FLV`, url: value.url })
                         })
                     }
+                    return urls
                 }))
             }))
         }
@@ -210,21 +214,25 @@
     class Bangumi {
         /**
          * 获取 bangumi 的某集
-         * @param { dir, id, part, episode } bangumi
+         * @param { dir, id, part, episode, cover } bangumi
          */
         static async part(bangumi) {
             const QN = getCookie('CURRENT_QUALITY')
-                , { dir, id, part, episode } = bangumi
+                , { dir, id, part, episode, cover } = bangumi
                 , res = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
                 , durl = JSON.parse(res).result.durl
 
+            let urls = [{ dir, out: `第${episode}集-${part}.${cover.split('.').pop()}`, url: cover }]
             if (durl.length < 2) {
-                return [[[{ dir, part, out: `第${episode}集-${part}`, url: durl[0].url }]]]
+                // 无分段
+                urls.push({ dir, out: `第${episode}集-${part}.FLV`, url: durl[0].url })
             } else {
-                return [[durl.map((value, index) => {
-                    return { dir, part, out: `第${episode}集-${part}-${index}`, url: value.url }
-                })]]
+                // 有分段
+                durl.forEach((value, index) => {
+                    urls.push({ dir, out: `第${episode}集-${part}-${index}.FLV`, url: value.url })
+                })
             }
+            return [[urls]]
         }
         /**
          * 获取 bangumis 的所有 bangumi 的全集正片
@@ -246,19 +254,23 @@
                     }
                 }
 
-                return Promise.all(epList.map(async (page, index) => {
-                    const { id, title: episode } = page
+                return Promise.all(epList.map(async page => {
+                    const { id, title: episode, cover } = page
                         , part = page.longTitle ? page.longTitle : page.long_title
                         , res = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
                         , durl = JSON.parse(res).result.durl
 
+                    let urls = [{ dir, out: `第${episode}集-${part}.${cover.split('.').pop()}`, url: cover }]
                     if (durl.length < 2) {
-                        return [{ dir, part, out: `第${episode}集-${part}`, url: durl[0].url }]
+                        // 无分段
+                        urls.push({ dir, out: `第${episode}集-${part}.FLV`, url: durl[0].url })
                     } else {
-                        return durl.map((value, index) => {
-                            return { dir, part, out: `第${episode}集-${part}-${index}`, url: value.url }
+                        // 有分段
+                        durl.forEach((value, index) => {
+                            urls.push({ dir, out: `第${episode}集-${part}-${index}.FLV`, url: value.url })
                         })
                     }
+                    return urls
                 }))
             }))
         }
@@ -297,6 +309,7 @@
             await waitFor(() => document.querySelector('#viewbox_report h1'))
 
             const { aid, videoData } = window.__INITIAL_STATE__
+                , pic = `https:${videoData.pic}`
                 , p = getParameter('p') ? getParameter('p') - 1 : 0
                 , { cid, part } = videoData.pages[p]
                 , dir = document.querySelector('#viewbox_report h1').title.replace(/[\\\/:?*"<>|]/ig, '-')
@@ -304,7 +317,7 @@
             // 功能列表
             // 当前 Part
             let infos = [], exporterTypes = []
-            infos = await Video.part({ dir, id: aid, cid, part: part ? part : dir })
+            infos = await Video.part({ dir, id: aid, cid, part: part ? part : dir, pic })
             exporterTypes.push('此 Part')
             exporterTypes.push(Exporter.IDM(infos))
             exporterTypes.push(Exporter.Aria2(infos))
@@ -325,13 +338,14 @@
             await waitFor(() => window.__INITIAL_STATE__.epList)
 
             const { id, title: episode, longTitle: part } = window.__INITIAL_STATE__.epInfo
+                , cover = `https:${window.__INITIAL_STATE__.epInfo.cover}`
                 , dir = document.querySelector('.media-title').title.replace(/[\\\/:?*"<>|]/ig, '-')
                 , epList = window.__INITIAL_STATE__.epList
 
             // 功能列表
             // 单集
             let infos = [], exporterTypes = []
-            infos = await Bangumi.part({ dir, id, part: part ? part : dir, episode })
+            infos = await Bangumi.part({ dir, id, part: part ? part : dir, episode, cover })
             exporterTypes.push('此集')
             exporterTypes.push(Exporter.IDM(infos))
             exporterTypes.push(Exporter.Aria2(infos))
@@ -457,7 +471,7 @@
             let data = []
             infos.map(info => info.map(pages => pages.map(page => {
                 let { dir, url, out } = page
-                data.push(`${url}\r\n referer=${REFERER}\r\n dir=${BASEDIR}${dir}\r\n out=${out}.FLV\r\n`)
+                data.push(`${url}\r\n referer=${REFERER}\r\n dir=${BASEDIR}${dir}\r\n out=${out}\r\n`)
             })))
             return {
                 textContent: 'Aria2',
@@ -500,7 +514,7 @@
                             params: [
                                 `token:${ARIA2TOKEN}`,
                                 [url],
-                                { 'referer': `${REFERER}`, 'dir': `${BASEDIR}${out}`, 'out': `${out}.FLV` }
+                                { 'referer': `${REFERER}`, 'dir': `${BASEDIR}${dir}`, 'out': `${out}` }
                             ]
                         }]))
                     })))
