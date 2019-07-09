@@ -93,8 +93,7 @@ B站视频下载，油猴插件
   - [x] 播放页面
   - [x] 收藏夹/追番/追剧
     - [x] 点击按钮再获取数据（否则数据过多会导致白屏）
-  - [x] 设置配置页面
-    - [x] 修改即生效（修改配置前打开的页面需要刷新）
+  - [x] 修改配置
     - [ ] 清晰度->改为列表选择
 - [x] 保存用户设置
   - [x] 避免更新删除用户配置（感谢@[mkanako](<https://github.com/mkanako> )，[issues](<https://github.com/evgo2017/bilibili_video_download/issues/2> ) ）

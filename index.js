@@ -24,13 +24,13 @@
      * 用户配置
      */
     const LocalStorageName = 'evgoBvd'
-    const defaultOptions = new Map([
-        ['BASEDIR', './']
-        , ['ARIA2TOKEN', '']
-        , ['ARIA2RPC', 'http://localhost:6800/jsonrpc']
-        , ['QN', '120']
-        , ['DownCoverPic', '0']
-    ])
+        , defaultOptions = new Map([
+            ['BASEDIR', './']
+            , ['ARIA2TOKEN', '']
+            , ['ARIA2RPC', 'http://localhost:6800/jsonrpc']
+            , ['QN', '120']
+            , ['DownCoverPic', '0']
+        ])
     if (!localStorage.getItem(LocalStorageName)) {
         let evgoBvd = {}
         for (let [key, value] of defaultOptions) {
@@ -46,7 +46,6 @@
         }
         localStorage.setItem(LocalStorageName, JSON.stringify(evgoBvd))
     }
-
     /* 刷新配置项 */
     let BASEDIR, ARIA2TOKEN, ARIA2RPC, QN, DownCoverPic
     function refreshOptions() {
@@ -58,6 +57,37 @@
         DownCoverPic = parseInt(evgoBvd.DownCoverPic)
     }
     refreshOptions()
+
+    /**
+     * 全局数据
+     */
+    let G_info = {
+        get: function () { },
+        one: {
+            info: []
+            , IDM: function () {
+                this.href = BlobURL(Exporter.IDM(G_info.one.info))
+            }
+            , Aria2: function () {
+                this.href = BlobURL(Exporter.Aria2(G_info.one.info))
+            }
+            , ARIA2RPC: function () {
+                Exporter.Aria2RPC(G_info.one.info)
+            }
+        },
+        all: {
+            info: []
+            , IDM: function () {
+                this.href = BlobURL(Exporter.IDM(G_info.all.info))
+            }
+            , Aria2: function () {
+                this.href = BlobURL(Exporter.Aria2(G_info.all.info))
+            }
+            , ARIA2RPC: function () {
+                Exporter.Aria2RPC(G_info.all.info)
+            }
+        }
+    }, G_getDataAuto = true
 
     const REFERER = 'https://www.bilibili.com'
     /**
@@ -164,6 +194,13 @@
     function getLocalStorage(name) {
         let evgoBvd = JSON.parse(localStorage.getItem(LocalStorageName))
         return evgoBvd.hasOwnProperty(name) ? evgoBvd[name] : null
+    }
+    /**
+     * 得到 Blob URL
+     * @param {Array} infos 
+     */
+    function BlobURL(infos) {
+        return URL.createObjectURL(new Blob([infos.join('')]))
     }
 
     class Video {
@@ -300,21 +337,50 @@
                 // 批量
                 if (currentURL.search('favlist') > -1) {
                     // 收藏页 @match *://space.bilibili.com/*/favlist*
-                    Exporter.getData(Info.favlist)
+                    G_info.get = Info.favlist
                 } else if (currentURL.search('bangumi') > -1 || currentURL.search('cinema') > -1) {
                     // 追番 @match *://space.bilibili.com/*/bangumi*
                     // 追剧 @match *://space.bilibili.com/*/cinema*
-                    Exporter.getData(Info.bangumisOrCinema)
+                    G_info.get = Info.bangumisOrCinema
                 }
+                G_getDataAuto = false
+                UI.list([
+                    {
+                        textContent: '获取数据'
+                        , onclick: async function () {
+                            await G_info.get()
+                            UI.list([
+                                {}
+                                , { textContent: 'IDM', download: 'download.ef2', onclick: G_info.all.IDM, href: '#' }
+                                , { textContent: 'Aria2', download: 'download.session', onclick: G_info.all.Aria2, href: '#' }
+                                , { textContent: 'Aria2RPC', onclick: G_info.all.ARIA2RPC }
+                            ])
+                        }
+                    }
+                    , '量大卡顿等待即可'
+                ])
             } else {
                 // 单个
                 if (currentURL.search('video') > -1) {
                     // 视频 @match *://www.bilibili.com/video/av*
-                    Info.oneVideo()
+                    G_info.get = Info.oneVideo
                 } else if (currentURL.search('bangumi') > -1) {
                     // 番剧 @match *://www.bilibili.com/bangumi/play/ep*
-                    Info.oneBangumi()
+                    G_info.get = Info.oneBangumi
                 }
+                G_getDataAuto = true
+                await G_info.get()
+                UI.list([
+                    '单个'
+                    , { textContent: 'IDM', download: 'download.ef2', onclick: G_info.one.IDM, href: '#' }
+                    , { textContent: 'Aria2', download: 'download.session', onclick: G_info.one.Aria2, href: '#' }
+                    , { textContent: 'Aria2RPC', href: '', onclick: G_info.one.ARIA2RPC }
+                    , {}
+                    , '多个'
+                    , { textContent: 'IDM', download: 'download.ef2', onclick: G_info.all.IDM, href: '#' }
+                    , { textContent: 'Aria2', download: 'download.session', onclick: G_info.all.Aria2, href: '#' }
+                    , { textContent: 'Aria2RPC', href: '', onclick: G_info.all.ARIA2RPC }
+                ])
             }
         }
         static async oneVideo() {
@@ -329,22 +395,10 @@
                 , { cid, part } = videoData.pages[p]
                 , dir = document.querySelector('#viewbox_report h1').title.replace(/[\\\/:?*"<>|]/ig, '-')
 
-            // 功能列表
             // 当前 Part
-            let infos = [], exporterTypes = []
-            infos = await Video.part({ dir, id: aid, cid, part: part ? part : dir, pic })
-            exporterTypes.push('此 Part')
-            exporterTypes.push(Exporter.IDM(infos))
-            exporterTypes.push(Exporter.Aria2(infos))
-            exporterTypes.push(Exporter.Aria2RPC(infos))
-            exporterTypes.push({})
+            G_info.one.info = await Video.part({ dir, id: aid, cid, part: part ? part : dir, pic })
             // 全 Part
-            infos = await Video.all({ dir, id: aid })
-            exporterTypes.push('全 Part')
-            exporterTypes.push(Exporter.IDM(infos))
-            exporterTypes.push(Exporter.Aria2(infos))
-            exporterTypes.push(Exporter.Aria2RPC(infos))
-            Exporter.list(exporterTypes)
+            G_info.all.info = await Video.all({ dir, id: aid })
         }
         static async oneBangumi() {
             await waitFor(() => window.__INITIAL_STATE__)
@@ -357,22 +411,10 @@
                 , dir = document.querySelector('.media-title').title.replace(/[\\\/:?*"<>|]/ig, '-')
                 , epList = window.__INITIAL_STATE__.epList
 
-            // 功能列表
             // 单集
-            let infos = [], exporterTypes = []
-            infos = await Bangumi.part({ dir, id, part: part ? part : dir, episode, cover })
-            exporterTypes.push('此集')
-            exporterTypes.push(Exporter.IDM(infos))
-            exporterTypes.push(Exporter.Aria2(infos))
-            exporterTypes.push(Exporter.Aria2RPC(infos))
-            exporterTypes.push({})
+            G_info.one.info = await Bangumi.part({ dir, id, part: part ? part : dir, episode, cover })
             // 全集
-            infos = await Bangumi.all({ dir, epList })
-            exporterTypes.push('全集')
-            exporterTypes.push(Exporter.IDM(infos))
-            exporterTypes.push(Exporter.Aria2(infos))
-            exporterTypes.push(Exporter.Aria2RPC(infos))
-            Exporter.list(exporterTypes)
+            G_info.all.info = await Bangumi.all({ dir, epList })
         }
         /**
          * 获取收藏页数据
@@ -386,8 +428,6 @@
                 , media_count
                 , maxPn
                 , infos = []
-                , infoss = []
-                , exporterTypes = []
 
             if (window.location.search) {
                 media_id = getParameter('fid')
@@ -407,17 +447,12 @@
                     , medias = JSON.parse(res).data.medias
                 for (let media of medias) {
                     let { title: dir, id } = media
+                    dir = dir.replace(/[\\\/:?*"<>|]/ig, '-')
                     infos.push({ dir, id })
                 }
             }
 
-            // 功能列表
-            infoss = await Video.all(infos)
-            exporterTypes.push('当前收藏夹')
-            exporterTypes.push(Exporter.IDM(infoss))
-            exporterTypes.push(Exporter.Aria2(infoss))
-            exporterTypes.push(Exporter.Aria2RPC(infoss))
-            Exporter.list(exporterTypes)
+            G_info.all.info = await Video.all(infos)
         }
         /**
          * 获取追番/剧数据
@@ -432,8 +467,6 @@
                 , { list: bangumis, ps, total } = JSON.parse(res).data
             let maxPn
                 , infos = []
-                , infoss = []
-                , exporterTypes = []
 
             bangumis.forEach(bangumi => {
                 let { title: dir, season_id: id } = bangumi
@@ -447,17 +480,12 @@
                     , { list: bangumis } = JSON.parse(res).data
                 bangumis.forEach(bangumi => {
                     let { title: dir, season_id: id } = bangumi
+                    dir = dir.replace(/[\\\/:?*"<>|]/ig, '-')
                     infos.push({ dir, id })
                 })
             }
 
-            // 功能列表
-            infoss = await Bangumi.all(infos)
-            exporterTypes.push('追剧')
-            exporterTypes.push(Exporter.IDM(infoss))
-            exporterTypes.push(Exporter.Aria2(infoss))
-            exporterTypes.push(Exporter.Aria2RPC(infoss))
-            Exporter.list(exporterTypes)
+            G_info.all.info = await Bangumi.all(infos)
         }
     }
 
@@ -472,11 +500,7 @@
                 let { url } = page
                 data.push(`<\r\n${url}\r\nreferer: ${REFERER}\r\n>\r\n`)
             })))
-            return {
-                textContent: 'IDM',
-                download: 'download.ef2',
-                href: URL.createObjectURL(new Blob([data.join('')]))
-            }
+            return data
         }
         /**
          * 以 Aria2 方式导出
@@ -488,69 +512,66 @@
                 let { dir, url, out } = page
                 data.push(`${url}\r\n referer=${REFERER}\r\n dir=${BASEDIR}${dir}\r\n out=${out}\r\n`)
             })))
-            return {
-                textContent: 'Aria2',
-                download: 'download.session',
-                href: URL.createObjectURL(new Blob([data.join('')]))
-            }
+            return data
         }
         /**
          * 将数据发送到 Aria2RPC
          * @param {Array} infos
          */
         static Aria2RPC(infos) {
-            return {
-                textContent: 'Aria2RPC',
-                href: '',
-                onclick: function () {
-                    infos.map(info => info.map(pages => pages.map(page => {
-                        let { dir, out, url } = page
-                            , rpcStatus = document.getElementById('rpcStatus')
-                            , xhr = new XMLHttpRequest()
+            infos.map(info => info.map(pages => pages.map(page => {
+                let { dir, out, url } = page
+                    , rpcStatus = document.getElementById('rpcStatus')
+                    , xhr = new XMLHttpRequest()
 
-                        xhr.onloadstart = () => {
-                            rpcStatus.innerHTML = '<p>发送请求</p>'
-                        }
-                        xhr.onload = () => {
-                            rpcStatus.innerHTML = '<p>请求完成</p>'
-                        }
-                        xhr.onerror = (e) => {
-                            rpcStatus.innerHTML = `<p>请求出错:${e}</p>`
-                        }
-                        xhr.ontimeout = () => {
-                            rpcStatus.innerHTML += '<p>请求超时</p>'
-                        }
-                        xhr.open('POST', `${ARIA2RPC}`, true)
-                        xhr.setRequestHeader('Content-Type', 'application/json;charset=utf-8')
-                        xhr.send(JSON.stringify([{
-                            id: '',
-                            jsonrpc: 2,
-                            method: "aria2.addUri",
-                            params: [
-                                `token:${ARIA2TOKEN}`,
-                                [url],
-                                { 'referer': `${REFERER}`, 'dir': `${BASEDIR}${dir}`, 'out': `${out}` }
-                            ]
-                        }]))
-                    })))
+                xhr.onloadstart = () => {
+                    rpcStatus.innerHTML = '<p>发送请求</p>'
                 }
-            }
+                xhr.onload = () => {
+                    rpcStatus.innerHTML = '<p>请求完成</p>'
+                }
+                xhr.onerror = (e) => {
+                    rpcStatus.innerHTML = `<p>请求出错:${e}</p>`
+                }
+                xhr.ontimeout = () => {
+                    rpcStatus.innerHTML += '<p>请求超时</p>'
+                }
+                xhr.open('POST', `${ARIA2RPC}`, true)
+                xhr.setRequestHeader('Content-Type', 'application/json;charset=utf-8')
+                xhr.send(JSON.stringify([{
+                    id: '',
+                    jsonrpc: 2,
+                    method: "aria2.addUri",
+                    params: [
+                        `token:${ARIA2TOKEN}`,
+                        [url],
+                        { 'referer': `${REFERER}`, 'dir': `${BASEDIR}${dir}`, 'out': `${out}` }
+                    ]
+                }]))
+            })))
         }
-        /**
-         * 点击按钮再获取数据
-         * @param {function} func
-         */
-        static getData(func) {
-            Exporter.list([{ textContent: '获取数据', onclick: func }])
-        }
+    }
+
+    class UI {
         /**
          * 功能列表
          * @param {Array} types
          */
         static list(types) {
-            if (document.getElementById('bvdlist')) {
-                document.body.removeChild(document.getElementById('bvdlist'))
-            }
+            const baseTypes = [
+                {}
+                , {
+                    textContent: '设置',
+                    onclick: function () {
+                        let st = document.getElementById('bvdsetting')
+                        if (st) st.style.display = st.style.display == 'none' ? 'block' : 'none'
+                        else UI.setting()
+                    }
+                }
+                , { textContent: '帮助', href: 'https://github.com/evgo2017/bilibili_video_download' }
+            ]
+
+            if (document.getElementById('bvdlist')) document.body.removeChild(document.getElementById('bvdlist'))
             let dd = document.createElement('div')
             dd.id = 'bvdlist'
             dd.style.backgroundColor = '#00A1D6'
@@ -566,163 +587,158 @@
             rpcStatus.style.color = 'red'
             dd.appendChild(rpcStatus)
 
-            for (let i of types) {
-                dd.appendChild(createA(i))
-            }
-            dd.appendChild(createA({}))
-            dd.appendChild(createA({
-                textContent: '设置', onclick: function () {
-                    let st = document.getElementById('bvdsetting')
-                    if (st) {
-                        st.style.display = st.style.display == 'none' ? 'block' : 'none'
-                    } else {
-                        setting()
+            for (let i of baseTypes) types.push(i)
+            for (let i of types) dd.appendChild(UI.createA(i))
+            document.body.appendChild(dd)
+        }
+        /* 设置页面 */
+        static setting() {
+            let st = document.createElement('div')
+                , options = document.createElement('div')
+                , buttonsDiv = document.createElement('div')
+
+            const inputs = [ /* 输入框 */
+                { textContent: `基础路径（以 “/\” 结尾）`, name: 'BASEDIR' }
+                , { textContent: 'ARIA2TOKEN', name: 'ARIA2TOKEN' }
+                , { textContent: 'ARIA2RPC', name: 'ARIA2RPC' }
+                , { textContent: '清晰度（默认最高）', name: 'QN' }
+            ], checks = [  /* 单选 */
+                { textContent: '下载封面图', name: 'DownCoverPic' }
+            ], buttons = [ /* 按钮 */
+                {
+                    value: '保存'
+                    , type: 'submit'
+                    , onclick: async function () {
+                        let data = document.getElementById('bvdsetting').querySelectorAll('input')
+                        for (let i of data) {
+                            switch (i.type) {
+                                case 'checkbox':
+                                    if (i.checked) setLocalStorage(i.name, '1')
+                                    else setLocalStorage(i.name, '0')
+                                    break
+                                case 'text':
+                                    setLocalStorage(i.name, i.value)
+                                    break
+                                default:
+                                    break
+                            }
+                        }
+                        st.style.display = 'none'
+                        refreshOptions()
+                        if (G_getDataAuto) await G_info.get()
+                        else Info.get()
+                        return false
+                    }
+                },
+                {
+                    value: '关闭'
+                    , type: 'button'
+                    , onclick: function () {
+                        st.style.display = 'none'
                     }
                 }
-            }))
-            dd.appendChild(createA({ textContent: '帮助', href: 'https://github.com/evgo2017/bilibili_video_download' }))
-            document.body.appendChild(dd)
+            ]
 
-            /**
-            * 设置用户配置
-            */
-            function setting() {
-                let st = document.createElement('div')
-                    , options = document.createElement('ul')
-                    , meta = document.createElement('p')
+            for (let i of inputs) options.appendChild(UI.createInput(i))
+            for (let i of checks) options.appendChild(UI.createCheckbox(i))
+            for (let i of buttons) buttonsDiv.appendChild(UI.createButton(i))
 
-                /* 设置输入框 */
-                const inputs = [
-                    { textContent: `基础路径（以 “/\” 结尾）`, name: 'BASEDIR' }
-                    , { textContent: 'ARIA2TOKEN', name: 'ARIA2TOKEN' }
-                    , { textContent: 'ARIA2RPC', name: 'ARIA2RPC' }
-                    , { textContent: '清晰度（默认最高）', name: 'QN' }
-                ]
-                for (let i of inputs) {
-                    options.appendChild(createInput(i))
-                }
-                /* 设置“单选” */
-                const checks = [
-                    { textContent: '下载封面图（此选项在部分页面切换时会卡顿，下个版本更新）', name: 'DownCoverPic' }
-                ]
-                for (let i of checks) {
-                    options.appendChild(createCheckbox(i))
-                }
+            st.id = 'bvdsetting'
+            st.textContent = '设置'
+            st.style.backgroundColor = '#00A1D6'
+            st.style.zIndex = 999
+            st.style.position = 'fixed'
+            st.style.padding = '10px'
+            st.style.fontSize = '1.2em'
+            st.style.top = '70px'
+            st.style.left = '80px'
 
-                /* 设置样式 */
-                st.id = 'bvdsetting'
-                st.style.backgroundColor = '#00A1D6'
-                st.style.zIndex = 999
-                st.style.position = 'fixed'
-                st.style.padding = '10px'
-                st.style.fontSize = '1.2em'
-                st.textContent = '设置'
-                st.style.top = '70px'
-                st.style.left = '80px'
-                let lis = options.getElementsByTagName('li')
-                for (let i of lis) {
-                    i.style.marginTop = '10px'
-                }
+            st.appendChild(options)
+            st.appendChild(buttonsDiv)
 
-                meta.style.color = 'red'
-                meta.style.marginTop = '10px'
-                meta.innerHTML = '修改即生效'
+            let lis = st.getElementsByTagName('div')
+            for (let i of lis) i.style.marginTop = '10px'
 
-                st.appendChild(options)
-                st.appendChild(meta)
-                document.body.appendChild(st)
-            }
-            /**
-             * 创建按钮 dom
-             * @param {object} goal
-             */
-            function createA(goal) {
-                let { textContent, download, href, onclick } = goal
-                let a = document.createElement('a')
-                a.style.display = 'block'
-                a.style.fontSize = '1em'
-                a.style.padding = '5px'
-
-                if (typeof goal == 'string') {
-                    a.textContent = goal
-                    return a
-                }
-                if (textContent) {
-                    a.style.color = '#fff'
-                    a.textContent = textContent ? textContent : '-----'
-                } else {
-                    a.style.color = '#000'
-                    a.textContent = '-----'
-                }
-                if (href) a.href = href
-                if (download) a.download = download
-                if (onclick) a.onclick = onclick
+            document.body.appendChild(st)
+        }
+        /* 创建按钮 dom: String || {} || { textContent, download, href, onclick } */
+        static createA(goal) {
+            let a = document.createElement('a')
+            a.style.display = 'block'
+            a.style.fontSize = '1em'
+            a.style.padding = '5px'
+            if (typeof goal == 'string') {
+                a.textContent = goal
                 return a
             }
-            /**
-             * 创建修改标签
-             */
-            function createInput(goal) {
-                const { textContent, name } = goal
-                let value = getLocalStorage(name)
-                    , li = document.createElement('li')
-                    , label = document.createElement('label')
-                    , input = document.createElement('input')
 
-                label.setAttribute("for", name)
-                label.innerHTML = `${textContent}:`
-                label.style.display = 'inline-block'
-                label.style.marginBottom = '5px'
+            let { textContent, download, href, onclick } = goal
+            a.textContent = textContent ? textContent : '-----'
+            if (textContent) a.style.color = '#fff'
+            if (href) a.href = href
+            if (download) a.download = download
+            if (onclick) a.onclick = onclick
+            return a
+        }
+        /* 创建修改标签 { textContent, name }  */
+        static createInput(goal) {
+            const { textContent, name } = goal
+            let value = getLocalStorage(name)
+                , div = document.createElement('div')
+                , label = document.createElement('label')
+                , input = document.createElement('input')
 
-                input.style.display = 'block'
-                input.style.fontSize = '1em'
-                input.style.border = 0
-                input.style.padding = '5px'
-                input.placeholder = value
-                input.value = value
-                input.name = name
-                input.onblur = function () {
-                    setLocalStorage(name, input.value)
-                    refreshOptions()
-                    Info.get()
-                }
+            label.setAttribute("for", name)
+            label.innerHTML = `${textContent}:`
+            label.style.display = 'inline-block'
+            label.style.marginBottom = '5px'
 
-                li.appendChild(label)
-                li.appendChild(input)
-                return li
-            }
-            /**
-             * 创建选择
-             */
-            function createCheckbox(goal) {
-                const { textContent, name } = goal
-                let value = parseInt(getLocalStorage(name))
-                    , li = document.createElement('li')
-                    , label = document.createElement('label')
-                    , input = document.createElement('input')
+            input.style.display = 'block'
+            input.style.fontSize = '1em'
+            input.style.border = 0
+            input.style.padding = '5px'
+            input.placeholder = value
+            input.value = value
+            input.name = name
 
-                label.setAttribute("for", name)
-                label.innerHTML = `${textContent}`
-                label.style.marginLeft = '5px'
+            div.appendChild(label)
+            div.appendChild(input)
+            return div
+        }
+        /* 创建选择 { textContent, name } */
+        static createCheckbox(goal) {
+            const { textContent, name } = goal
+            let value = parseInt(getLocalStorage(name))
+                , div = document.createElement('div')
+                , label = document.createElement('label')
+                , input = document.createElement('input')
 
-                input.type = 'checkbox'
-                input.style['-webkit-appearance'] = "checkbox"
-                input.name = name
-                if (value) input.checked = "checked"
-                input.onclick = function () {
-                    if (this.checked) {
-                        setLocalStorage(name, '1')
-                    } else {
-                        setLocalStorage(name, '0')
-                    }
-                    refreshOptions()
-                    Info.get()
-                }
+            label.setAttribute("for", name)
+            label.innerHTML = `${textContent}`
+            label.style.marginLeft = '5px'
 
-                li.appendChild(input)
-                li.appendChild(label)
-                return li
-            }
+            input.type = 'checkbox'
+            input.style['-webkit-appearance'] = "checkbox"
+            input.name = name
+            if (value) input.checked = "checked"
+
+            div.appendChild(input)
+            div.appendChild(label)
+            return div
+        }
+        /* 创建按钮 { value, type, onclick } */
+        static createButton(goal) {
+            let { value, type, onclick } = goal
+                , button = document.createElement('input')
+
+            button.type = type
+            button.value = value
+            button.onclick = onclick
+            button.style.border = 0
+            button.style.padding = '3px 5px'
+            button.style.marginRight = '10px'
+
+            return button
         }
     }
     Info.get()
