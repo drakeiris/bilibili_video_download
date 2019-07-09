@@ -10,7 +10,7 @@
 // @match       *://space.bilibili.com/*/favlist*
 // @match       *://space.bilibili.com/*/bangumi*
 // @match       *://space.bilibili.com/*/cinema*
-// @version     1.1.1
+// @version     1.2.0
 // @license     MIT License
 // @author      evgo2017
 // @copyright   evgo2017

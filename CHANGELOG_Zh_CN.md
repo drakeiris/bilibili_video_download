@@ -2,11 +2,12 @@
 
 感谢大家的的使用以及建议！
 
-## 2019/07/09
+## 2019/07/09 - v1.2.0
 
-- 完善：修改配置刷新下载数据
+- 完善：修改配置->刷新下载数据
 
   ```
+  重构数据交互方式，提高性能
   降低数据与 DOM 耦合度，解决切换设置时卡顿现象
   减少重建 DOM 的情况，直接重获数据即可
   ```
@@ -38,7 +39,7 @@
 
 - 完善：以 `Local Storage` 替代了 `Cookies` （感谢 @[mkanako](<https://github.com/mkanako>) ，[issues](<https://github.com/evgo2017/bilibili_video_download/issues/2>)）
 
-## 2019/07/06
+## 2019/07/06  - v1.1.0
 
 
 - 增加：功能列表->设置（感谢 @[mkanako](<https://github.com/mkanako>) ，[issues](<https://github.com/evgo2017/bilibili_video_download/issues/2>)）
