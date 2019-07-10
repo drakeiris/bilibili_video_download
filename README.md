@@ -18,6 +18,8 @@ B站视频下载，油猴插件
 
 > 在修改配置之前打开的页面，需要刷新，当前和之后打开的页面无需
 >
+> 因为播放页为 `www.bilibili.com`，而收藏页等为 `space.bilibili.com`，所以这两部分的数据存储不互通
+>
 > 本可用 GM_setValue && GM_getValue 存储，但是由于代码需要页面的上下文来获取一些数据，所以必须设置 grant 为 none，故不可用 GM_* 等功能
 
 ![setting](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/setting.PNG)
@@ -90,11 +92,13 @@ B站视频下载，油猴插件
     - [ ] 定时更新弹幕
 - [x] 功能列表
   - [x] 无需刷新页面->更新列表
-  - [x] 播放页面
-  - [x] 收藏夹/追番/追剧
-    - [x] 点击按钮再获取数据（否则数据过多会导致白屏）
-  - [x] 修改配置
-    - [ ] 清晰度->改为列表选择
+  - [x] 匹配页面
+    - [x] 播放页面
+    - [x] 收藏夹/追番/追剧
+      - [x] 点击按钮再获取数据（否则数据过多会导致白屏）
+  - [x] 特别功能
+    - [x] 清晰度->下拉菜单文字选择
+      - [x] 播放页面时是否以当前播放器 QN 为准
 - [x] 保存用户设置
   - [x] 避免更新删除用户配置（感谢@[mkanako](<https://github.com/mkanako> )，[issues](<https://github.com/evgo2017/bilibili_video_download/issues/2> ) ）
 - [x] 下载方式
@@ -102,9 +106,6 @@ B站视频下载，油猴插件
   - [x] Aria2
   - [x] Aria2RPC
     - [x] Windows 下自动切换端口转发开启/关闭
-- [x] 设置下载的清晰度（默认 116）
-  - [x] 视频的某 Part / 番剧的某集，以当前播放器的 QN 为准
-  - [x] 其余时候均以设置的 QN 为准
 - [x] 大会员专享（本身也是会员才行）
 - [ ] 报告获取数据进度
 - [ ] 异常捕获与处理

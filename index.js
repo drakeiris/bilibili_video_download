@@ -29,6 +29,7 @@
             , ['ARIA2TOKEN', '']
             , ['ARIA2RPC', 'http://localhost:6800/jsonrpc']
             , ['QN', '120']
+            , ['QNByBofqi', '0']
             , ['DownCoverPic', '0']
         ])
     if (!localStorage.getItem(LocalStorageName)) {
@@ -47,13 +48,19 @@
         localStorage.setItem(LocalStorageName, JSON.stringify(evgoBvd))
     }
     /* 刷新配置项 */
-    let BASEDIR, ARIA2TOKEN, ARIA2RPC, QN, DownCoverPic
+    let BASEDIR
+        , ARIA2TOKEN
+        , ARIA2RPC
+        , QN
+        , QNByBofqi
+        , DownCoverPic
     function refreshOptions() {
         let evgoBvd = JSON.parse(localStorage.getItem(LocalStorageName))
         BASEDIR = evgoBvd.BASEDIR
         ARIA2TOKEN = evgoBvd.ARIA2TOKEN
         ARIA2RPC = evgoBvd.ARIA2RPC
         QN = evgoBvd.QN
+        QNByBofqi = parseInt(evgoBvd.QNByBofqi)
         DownCoverPic = parseInt(evgoBvd.DownCoverPic)
     }
     refreshOptions()
@@ -202,6 +209,17 @@
     function BlobURL(infos) {
         return URL.createObjectURL(new Blob([infos.join('')]))
     }
+    /**
+     * 选择 QN
+     * @match https://www.bilibili.com/*
+     * 在播放具体视频的页面时，下载的清晰度是否以正在播放的清晰度为准
+     */
+    function changeQN() {
+        if (QNByBofqi) {
+            return getCookie('CURRENT_QUALITY')
+        }
+        return QN
+    }
 
     class Video {
         /**
@@ -209,7 +227,7 @@
          * @param { dir, id, cid, part, pic } video
          */
         static async part(video) {
-            const QN = getCookie('CURRENT_QUALITY')
+            const QN = changeQN()
                 , { dir, id: aid, cid, part, pic } = video
                 , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
                 , durl = JSON.parse(res).data.durl
@@ -267,7 +285,7 @@
          * @param { dir, id, part, episode, cover } bangumi
          */
         static async part(bangumi) {
-            const QN = getCookie('CURRENT_QUALITY')
+            const QN = changeQN()
                 , { dir, id, part, episode, cover } = bangumi
                 , res = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
                 , durl = JSON.parse(res).result.durl
@@ -605,14 +623,15 @@
                 , { textContent: 'ARIA2RPC', name: 'ARIA2RPC' }
             ], selects = [ /* 下拉菜单 */
                 {
-                    textContent: '最高清晰度'
+                    textContent: '最高清晰度（QN）'
                     , name: 'QN'
+                    , title: '小技巧：会返回此 QN，或视频最大支持 QN 的视频'
                     , options: [
                         { value: '120', innerText: '超清 4K' }
                         , { value: '116', innerText: '高清 1080P60' }
                         , { value: '112', innerText: '高清 1080P+' }
-                        , { value: '74', innerText: '高清 720P60' }
                         , { value: '80', innerText: '高清 1080P' }
+                        , { value: '74', innerText: '高清 720P60' }
                         , { value: '64', innerText: '高清 720P' }
                         , { value: '32', innerText: '清晰 480P' }
                         , { value: '16', innerText: '流畅 360P' }
@@ -621,6 +640,7 @@
                 }
             ], checkboxs = [  /* 单选 */
                 { textContent: '下载封面图', name: 'DownCoverPic' }
+                , { textContent: '播放页 QN 以播放器为准', name: 'QNByBofqi', title: '在播放具体视频的页面时，下载的清晰度是否以正在播放的清晰度为准' }
             ], buttons = [ /* 按钮 */
                 {
                     value: '保存'
@@ -707,9 +727,9 @@
             if (onclick) a.onclick = onclick
             return a
         }
-        /* 创建修改标签 { textContent, name }  */
+        /* 创建修改标签 { textContent, name, title }  */
         static createInputText(goal) {
-            const { textContent, name } = goal
+            const { textContent, name, title } = goal
             let value = getLocalStorage(name)
                 , div = document.createElement('div')
                 , label = document.createElement('label')
@@ -719,6 +739,7 @@
             label.innerHTML = `${textContent}:`
             label.style.display = 'inline-block'
             label.style.marginBottom = '5px'
+            label.title = `${title}`
 
             input.style.display = 'block'
             input.style.fontSize = '1em'
@@ -732,9 +753,9 @@
             div.appendChild(input)
             return div
         }
-        /* 创建下拉菜单 [{textContent, name, options}] */
+        /* 创建下拉菜单 [{textContent, name, title, options}] */
         static createSelect(goal) {
-            const { textContent, name, options } = goal
+            const { textContent, name, title, options } = goal
             let value = parseInt(getLocalStorage(name))
                 , div = document.createElement('div')
                 , label = document.createElement('label')
@@ -744,7 +765,7 @@
             label.innerHTML = `${textContent}:`
             label.style.display = 'block'
             label.style.marginBottom = '5px'
-            label.title = '播放页以播放器清晰度为准，其余以此设置为准'
+            label.title = `${title}`
 
             options.forEach(i => {
                 let option = document.createElement('option')
@@ -761,9 +782,9 @@
             div.appendChild(select)
             return div
         }
-        /* 创建选择 { textContent, name } */
+        /* 创建选择 { textContent, name, title } */
         static createCheckbox(goal) {
-            const { textContent, name } = goal
+            const { textContent, name, title } = goal
             let value = parseInt(getLocalStorage(name))
                 , div = document.createElement('div')
                 , label = document.createElement('label')
@@ -772,6 +793,7 @@
             label.setAttribute("for", name)
             label.innerHTML = `${textContent}`
             label.style.marginLeft = '5px'
+            label.title = `${title}`
 
             input.type = 'checkbox'
             input.style['-webkit-appearance'] = "checkbox"
