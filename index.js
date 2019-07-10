@@ -594,22 +594,42 @@
         /* 设置页面 */
         static setting() {
             let st = document.createElement('div')
-                , options = document.createElement('div')
+                , inputTextsDiv = document.createElement('div')
+                , selectsDiv = document.createElement('div')
+                , checkboxsDiv = document.createElement('div')
                 , buttonsDiv = document.createElement('div')
 
-            const inputs = [ /* 输入框 */
+            const inputTexts = [ /* 输入框 */
                 { textContent: `基础路径（以 “/\” 结尾）`, name: 'BASEDIR' }
                 , { textContent: 'ARIA2TOKEN', name: 'ARIA2TOKEN' }
                 , { textContent: 'ARIA2RPC', name: 'ARIA2RPC' }
-                , { textContent: '清晰度（默认最高）', name: 'QN' }
-            ], checks = [  /* 单选 */
+            ], selects = [ /* 下拉菜单 */
+                {
+                    textContent: '最高清晰度'
+                    , name: 'QN'
+                    , options: [
+                        { value: '120', innerText: '超清 4K' }
+                        , { value: '116', innerText: '高清 1080P60' }
+                        , { value: '112', innerText: '高清 1080P+' }
+                        , { value: '74', innerText: '高清 720P60' }
+                        , { value: '80', innerText: '高清 1080P' }
+                        , { value: '64', innerText: '高清 720P' }
+                        , { value: '32', innerText: '清晰 480P' }
+                        , { value: '16', innerText: '流畅 360P' }
+                        , { value: '0', innerText: '自动' }
+                    ]
+                }
+            ], checkboxs = [  /* 单选 */
                 { textContent: '下载封面图', name: 'DownCoverPic' }
             ], buttons = [ /* 按钮 */
                 {
                     value: '保存'
                     , type: 'submit'
                     , onclick: async function () {
-                        let data = document.getElementById('bvdsetting').querySelectorAll('input')
+                        const bvdsetting = document.getElementById('bvdsetting')
+                        let data = null
+
+                        data = bvdsetting.querySelectorAll('input')
                         for (let i of data) {
                             switch (i.type) {
                                 case 'checkbox':
@@ -623,6 +643,10 @@
                                     break
                             }
                         }
+
+                        data = bvdsetting.querySelectorAll('select')
+                        for (let i of data) setLocalStorage(i.name, i[i.selectedIndex].value)
+
                         st.style.display = 'none'
                         refreshOptions()
                         if (G_getDataAuto) await G_info.get()
@@ -639,8 +663,9 @@
                 }
             ]
 
-            for (let i of inputs) options.appendChild(UI.createInput(i))
-            for (let i of checks) options.appendChild(UI.createCheckbox(i))
+            for (let i of inputTexts) inputTextsDiv.appendChild(UI.createInputText(i))
+            for (let i of selects) selectsDiv.appendChild(UI.createSelect(i))
+            for (let i of checkboxs) checkboxsDiv.appendChild(UI.createCheckbox(i))
             for (let i of buttons) buttonsDiv.appendChild(UI.createButton(i))
 
             st.id = 'bvdsetting'
@@ -653,7 +678,9 @@
             st.style.top = '70px'
             st.style.left = '80px'
 
-            st.appendChild(options)
+            st.appendChild(inputTextsDiv)
+            st.appendChild(selectsDiv)
+            st.appendChild(checkboxsDiv)
             st.appendChild(buttonsDiv)
 
             let lis = st.getElementsByTagName('div')
@@ -681,7 +708,7 @@
             return a
         }
         /* 创建修改标签 { textContent, name }  */
-        static createInput(goal) {
+        static createInputText(goal) {
             const { textContent, name } = goal
             let value = getLocalStorage(name)
                 , div = document.createElement('div')
@@ -703,6 +730,35 @@
 
             div.appendChild(label)
             div.appendChild(input)
+            return div
+        }
+        /* 创建下拉菜单 [{textContent, name, options}] */
+        static createSelect(goal) {
+            const { textContent, name, options } = goal
+            let value = parseInt(getLocalStorage(name))
+                , div = document.createElement('div')
+                , label = document.createElement('label')
+                , select = document.createElement('select')
+
+            label.setAttribute("for", name)
+            label.innerHTML = `${textContent}:`
+            label.style.display = 'block'
+            label.style.marginBottom = '5px'
+            label.title = '播放页以播放器清晰度为准，其余以此设置为准'
+
+            options.forEach(i => {
+                let option = document.createElement('option')
+                option.value = i.value
+                option.innerText = i.innerText
+                if (i.value == value) option.seletced = "selected"
+                select.appendChild(option)
+            })
+
+            select.name = name
+            select.style.padding = '3px 5px 7px'
+
+            div.appendChild(label)
+            div.appendChild(select)
             return div
         }
         /* 创建选择 { textContent, name } */
