@@ -102,6 +102,7 @@ B站视频下载，油猴插件
 - [x] 保存用户设置
   - [x] 避免更新删除用户配置（感谢@[mkanako](<https://github.com/mkanako> )，[issues](<https://github.com/evgo2017/bilibili_video_download/issues/2> ) ）
 - [x] 下载方式
+  - [ ] 浏览器下载
   - [x] IDM
   - [x] Aria2
   - [x] Aria2RPC

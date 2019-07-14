@@ -10,7 +10,7 @@
 // @match       *://space.bilibili.com/*/favlist*
 // @match       *://space.bilibili.com/*/bangumi*
 // @match       *://space.bilibili.com/*/cinema*
-// @version     1.2.0
+// @version     1.2.1
 // @license     MIT License
 // @author      evgo2017
 // @copyright   evgo2017
@@ -31,6 +31,7 @@
             , ['QN', '120']
             , ['QNByBofqi', '0']
             , ['DownCoverPic', '0']
+            , ['DownDanmu', '0']
         ])
     if (!localStorage.getItem(LocalStorageName)) {
         let evgoBvd = {}
@@ -54,6 +55,7 @@
         , QN
         , QNByBofqi
         , DownCoverPic
+        , DownDanmu
     function refreshOptions() {
         let evgoBvd = JSON.parse(localStorage.getItem(LocalStorageName))
         BASEDIR = evgoBvd.BASEDIR
@@ -62,6 +64,7 @@
         QN = evgoBvd.QN
         QNByBofqi = parseInt(evgoBvd.QNByBofqi)
         DownCoverPic = parseInt(evgoBvd.DownCoverPic)
+        DownDanmu = parseInt(evgoBvd.DownDanmu)
     }
     refreshOptions()
 
@@ -234,6 +237,7 @@
 
             let urls = []
             if (DownCoverPic) urls.push({ dir, out: `${part}.${pic.split('.').pop()}`, url: pic })
+            if (DownDanmu) urls.push({ dir, out: `${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
             if (durl.length < 2) {
                 // 无分段
                 urls.push({ dir, out: `${part}.FLV`, url: durl[0].url })
@@ -265,6 +269,7 @@
 
                     let urls = []
                     if (DownCoverPic) urls.push({ dir, out: `${part}.${pic.split('.').pop()}`, url: pic })
+                    if (DownDanmu) urls.push({ dir, out: `${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
                     if (durl.length < 2) {
                         // 无分段
                         urls.push({ dir, out: `${part}.FLV`, url: durl[0].url })
@@ -282,16 +287,17 @@
     class Bangumi {
         /**
          * 获取 bangumi 的某集
-         * @param { dir, id, part, episode, cover } bangumi
+         * @param { dir, id, part, episode, cover, cid } bangumi
          */
         static async part(bangumi) {
             const QN = changeQN()
-                , { dir, id, part, episode, cover } = bangumi
+                , { dir, id, part, episode, cover, cid } = bangumi
                 , res = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
                 , durl = JSON.parse(res).result.durl
 
             let urls = []
             if (DownCoverPic) urls.push({ dir, out: `第${episode}集-${part}.${cover.split('.').pop()}`, url: cover })
+            if (DownDanmu) urls.push({ dir, out: `第${episode}集-${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
             if (durl.length < 2) {
                 // 无分段
                 urls.push({ dir, out: `第${episode}集-${part}.FLV`, url: durl[0].url })
@@ -324,13 +330,14 @@
                 }
 
                 return Promise.all(epList.map(async page => {
-                    const { id, title: episode, cover } = page
+                    const { id, title: episode, cover, cid } = page
                         , part = page.longTitle ? page.longTitle : page.long_title
                         , res = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
                         , durl = JSON.parse(res).result.durl
 
                     let urls = []
                     if (DownCoverPic) urls.push({ dir, out: `第${episode}集-${part}.${cover.split('.').pop()}`, url: cover })
+                    if (DownDanmu) urls.push({ dir, out: `第${episode}集-${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
                     if (durl.length < 2) {
                         // 无分段
                         urls.push({ dir, out: `第${episode}集-${part}.FLV`, url: durl[0].url })
@@ -408,7 +415,7 @@
             await waitFor(() => document.querySelector('#viewbox_report h1'))
 
             const { aid, videoData } = window.__INITIAL_STATE__
-                , pic = `https:${videoData.pic}`
+                , pic = videoData.pic
                 , p = getParameter('p') ? getParameter('p') - 1 : 0
                 , { cid, part } = videoData.pages[p]
                 , dir = document.querySelector('#viewbox_report h1').title.replace(/[\\\/:?*"<>|]/ig, '-')
@@ -425,12 +432,12 @@
             await waitFor(() => window.__INITIAL_STATE__.epList)
 
             const { id, title: episode, longTitle: part } = window.__INITIAL_STATE__.epInfo
-                , cover = `https:${window.__INITIAL_STATE__.epInfo.cover}`
+                , cover = window.__INITIAL_STATE__.epInfo.cover
                 , dir = document.querySelector('.media-title').title.replace(/[\\\/:?*"<>|]/ig, '-')
                 , epList = window.__INITIAL_STATE__.epList
 
             // 单集
-            G_info.one.info = await Bangumi.part({ dir, id, part: part ? part : dir, episode, cover })
+            G_info.one.info = await Bangumi.part({ dir, id, part: part ? part : dir, episode, cover, cid })
             // 全集
             G_info.all.info = await Bangumi.all({ dir, epList })
         }
@@ -563,7 +570,7 @@
                     params: [
                         `token:${ARIA2TOKEN}`,
                         [url],
-                        { 'referer': `${REFERER}`, 'dir': `${BASEDIR}${dir}`, 'out': `${out}` }
+                        { 'referer': `${REFERER}`, 'dir': `${BASEDIR}${dir}`, 'out': `${out}`, 'http-accept-gzip': 'true' }
                     ]
                 }]))
             })))
@@ -640,6 +647,7 @@
                 }
             ], checkboxs = [  /* 单选 */
                 { textContent: '下载封面图', name: 'DownCoverPic' }
+                , { textContent: '下载弹幕 XML', name: 'DownDanmu', title: '建议使用支持 XML 的播放器，还原度极高，比如“弹弹Play”' }
                 , { textContent: '播放页 QN 以播放器为准', name: 'QNByBofqi', title: '在播放具体视频的页面时，下载的清晰度是否以正在播放的清晰度为准' }
             ], buttons = [ /* 按钮 */
                 {
@@ -777,6 +785,7 @@
 
             select.name = name
             select.style.padding = '3px 5px 7px'
+            select.style['-webkit-appearance'] = "menulist"
 
             div.appendChild(label)
             div.appendChild(select)
