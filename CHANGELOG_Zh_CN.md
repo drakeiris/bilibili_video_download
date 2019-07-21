@@ -13,7 +13,11 @@
   ② Windows PowerShell：curl -OutFile C:\data\1.flv -H @{"Referer"="referer"} -Uri "url"；
   ③ 软件：浏览器直接右键保存、QNAP Download Station、FDM 等.
   
-  故考虑到方便性和需求程度，以及可更新弹幕的想法，不提供 XML 文件直接下载，而是提供 XML  的数据（JSON 格式）
+  故考虑到方便性和需求程度，以及可更新弹幕的想法，不提供 XML 文件直接下载，而是提供 XML  的数据（JSON 格式） -5:00 PM
+  ```
+
+  ```
+  OMG！我知道这两个工具为什么错误了！之后补充说明！开心激动！！这个发现过程简直太奇妙了！！ -11:30 PM
   ```
 
 - 增加：设置页面->开启/关闭 `下载弹幕 JSON` 功能
