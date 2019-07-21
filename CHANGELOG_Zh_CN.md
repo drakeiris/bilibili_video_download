@@ -2,6 +2,22 @@
 
 感谢大家的的使用以及建议！
 
+## 2019/07/21
+
+- 增加：弹幕 XML 地址 > JSON 格式
+
+  ```
+  此为大坑处，因为 XML 文件 Headers 格式： Transfer-Encoding: chunked、Content-Encoding: deflate，推荐的 IDM 和 Aria2 下载工具解压文件有误。
+  经过测试，以下几种方式可以方便的下载成功：
+  ① Linux：curl -O url --compressed；
+  ② Windows PowerShell：curl -OutFile C:\data\1.flv -H @{"Referer"="referer"} -Uri "url"；
+  ③ 软件：浏览器直接右键保存、QNAP Download Station、FDM 等.
+  
+  故考虑到方便性和需求程度，以及可更新弹幕的想法，不提供 XML 文件直接下载，而是提供 XML  的数据（JSON 格式）
+  ```
+
+- 增加：设置页面->开启/关闭 `下载弹幕 JSON` 功能
+
 ## 2019/07/10
 
 - 增加：设置页面->播放页 QN 以播放器为准

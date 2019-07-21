@@ -10,7 +10,7 @@
 // @match       *://space.bilibili.com/*/favlist*
 // @match       *://space.bilibili.com/*/bangumi*
 // @match       *://space.bilibili.com/*/cinema*
-// @version     1.2.1
+// @version     1.2.2
 // @license     MIT License
 // @author      evgo2017
 // @copyright   evgo2017
@@ -75,6 +75,7 @@
         get: function () { },
         one: {
             info: []
+            , danmuinfos: []
             , IDM: function () {
                 this.href = BlobURL(Exporter.IDM(G_info.one.info))
             }
@@ -84,9 +85,13 @@
             , ARIA2RPC: function () {
                 Exporter.Aria2RPC(G_info.one.info)
             }
+            , JSON: function () {
+                this.href = BlobURL(Exporter.JSON(G_info.one.danmuinfos))
+            }
         },
         all: {
             info: []
+            , danmuinfos: []
             , IDM: function () {
                 this.href = BlobURL(Exporter.IDM(G_info.all.info))
             }
@@ -95,6 +100,9 @@
             }
             , ARIA2RPC: function () {
                 Exporter.Aria2RPC(G_info.all.info)
+            }
+            , JSON: function () {
+                this.href = BlobURL(Exporter.JSON(G_info.all.danmuinfos))
             }
         }
     }, G_getDataAuto = true
@@ -207,7 +215,7 @@
     }
     /**
      * 得到 Blob URL
-     * @param {Array} infos 
+     * @param {Array} infos
      */
     function BlobURL(infos) {
         return URL.createObjectURL(new Blob([infos.join('')]))
@@ -231,20 +239,20 @@
          */
         static async part(video) {
             const QN = changeQN()
-                , { dir, id: aid, cid, part, pic } = video
-                , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
+                , { dir, id, cid, part, pic } = video
+                , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${id}&cid=${cid}&qn=${QN}&otype=json`)
                 , durl = JSON.parse(res).data.durl
 
             let urls = []
-            if (DownCoverPic) urls.push({ dir, out: `${part}.${pic.split('.').pop()}`, url: pic })
-            if (DownDanmu) urls.push({ dir, out: `${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
+            if (DownCoverPic) urls.push({ dir, id, cid, out: `${part}.${pic.split('.').pop()}`, url: pic })
+            if (DownDanmu) G_info.one.danmuinfos.push({ dir, id, cid, out: `${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
             if (durl.length < 2) {
                 // 无分段
-                urls.push({ dir, out: `${part}.FLV`, url: durl[0].url })
+                urls.push({ dir, id, cid, out: `${part}.FLV`, url: durl[0].url })
             } else {
                 // 有分段
                 durl.forEach((value, index) => {
-                    urls.push({ dir, out: `${part}-${index}.FLV`, url: value.url })
+                    urls.push({ dir, id, cid, out: `${part}-${index}.FLV`, url: value.url })
                 })
             }
             return [[urls]]
@@ -258,25 +266,25 @@
                 videos = [videos]
             }
             return Promise.all(videos.map(async video => {
-                const { dir, id: aid } = video
-                    , res = await rp(`https://api.bilibili.com/x/web-interface/view?aid=${aid}`)
+                const { dir, id } = video
+                    , res = await rp(`https://api.bilibili.com/x/web-interface/view?aid=${id}`)
                     , { pages, pic } = JSON.parse(res).data
 
                 return Promise.all(pages.map(async page => {
                     const { cid, part } = page
-                        , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${aid}&cid=${cid}&qn=${QN}&otype=json`)
+                        , res = await rp(`https://api.bilibili.com/x/player/playurl?avid=${id}&cid=${cid}&qn=${QN}&otype=json`)
                         , durl = JSON.parse(res).data.durl
 
                     let urls = []
-                    if (DownCoverPic) urls.push({ dir, out: `${part}.${pic.split('.').pop()}`, url: pic })
-                    if (DownDanmu) urls.push({ dir, out: `${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
+                    if (DownCoverPic) urls.push({ dir, id, cid, out: `${part}.${pic.split('.').pop()}`, url: pic })
+                    if (DownDanmu) G_info.all.danmuinfos.push({ dir, id, cid, out: `${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
                     if (durl.length < 2) {
                         // 无分段
-                        urls.push({ dir, out: `${part}.FLV`, url: durl[0].url })
+                        urls.push({ dir, id, cid, out: `${part}.FLV`, url: durl[0].url })
                     } else {
                         // 有分段
                         durl.forEach((value, index) => {
-                            urls.push({ dir, out: `${part}-${index}.FLV`, url: value.url })
+                            urls.push({ dir, id, cid, out: `${part}-${index}.FLV`, url: value.url })
                         })
                     }
                     return urls
@@ -294,17 +302,18 @@
                 , { dir, id, part, episode, cover, cid } = bangumi
                 , res = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
                 , durl = JSON.parse(res).result.durl
+                , sonTitle = `第${episode}集-${part}`
 
             let urls = []
-            if (DownCoverPic) urls.push({ dir, out: `第${episode}集-${part}.${cover.split('.').pop()}`, url: cover })
-            if (DownDanmu) urls.push({ dir, out: `第${episode}集-${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
+            if (DownCoverPic) urls.push({ dir, id, cid, out: `${sonTitle}.${cover.split('.').pop()}`, url: cover })
+            if (DownDanmu) G_info.one.danmuinfos.push({ dir, id, cid, out: `${sonTitle}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
             if (durl.length < 2) {
                 // 无分段
-                urls.push({ dir, out: `第${episode}集-${part}.FLV`, url: durl[0].url })
+                urls.push({ dir, id, cid, out: `${sonTitle}.FLV`, url: durl[0].url })
             } else {
                 // 有分段
                 durl.forEach((value, index) => {
-                    urls.push({ dir, out: `第${episode}集-${part}-${index}.FLV`, url: value.url })
+                    urls.push({ dir, id, cid, out: `${sonTitle}-${index}.FLV`, url: value.url })
                 })
             }
             return [[urls]]
@@ -334,17 +343,18 @@
                         , part = page.longTitle ? page.longTitle : page.long_title
                         , res = await rp(`https://api.bilibili.com/pgc/player/web/playurl?ep_id=${id}&qn=${QN}&otype=json`)
                         , durl = JSON.parse(res).result.durl
+                        , sonTitle = `第${episode}集-${part}`
 
                     let urls = []
-                    if (DownCoverPic) urls.push({ dir, out: `第${episode}集-${part}.${cover.split('.').pop()}`, url: cover })
-                    if (DownDanmu) urls.push({ dir, out: `第${episode}集-${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
+                    if (DownCoverPic) urls.push({ dir, id, cid, out: `${sonTitle}.${cover.split('.').pop()}`, url: cover })
+                    if (DownDanmu) G_info.all.danmuinfos.push({ dir, id, cid, out: `${sonTitle}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
                     if (durl.length < 2) {
                         // 无分段
-                        urls.push({ dir, out: `第${episode}集-${part}.FLV`, url: durl[0].url })
+                        urls.push({ dir, id, cid, out: `${sonTitle}.FLV`, url: durl[0].url })
                     } else {
                         // 有分段
                         durl.forEach((value, index) => {
-                            urls.push({ dir, out: `第${episode}集-${part}-${index}.FLV`, url: value.url })
+                            urls.push({ dir, id, cid, out: `${sonTitle}-${index}.FLV`, url: value.url })
                         })
                     }
                     return urls
@@ -374,12 +384,16 @@
                         textContent: '获取数据'
                         , onclick: async function () {
                             await G_info.get()
-                            UI.list([
+                            let uiList = [
                                 {}
                                 , { textContent: 'IDM', download: 'download.ef2', onclick: G_info.all.IDM, href: '#' }
                                 , { textContent: 'Aria2', download: 'download.session', onclick: G_info.all.Aria2, href: '#' }
                                 , { textContent: 'Aria2RPC', onclick: G_info.all.ARIA2RPC }
-                            ])
+                            ]
+                            if (DownDanmu) {
+                                uiList.splice(4, 0, { textContent: '弹幕 JSON', download: 'download.json', onclick: G_info.all.JSON })
+                            }
+                            UI.list(uiList)
                         }
                     }
                     , '量大卡顿等待即可'
@@ -395,7 +409,7 @@
                 }
                 G_getDataAuto = true
                 await G_info.get()
-                UI.list([
+                let uiList = [
                     '单个'
                     , { textContent: 'IDM', download: 'download.ef2', onclick: G_info.one.IDM, href: '#' }
                     , { textContent: 'Aria2', download: 'download.session', onclick: G_info.one.Aria2, href: '#' }
@@ -405,7 +419,12 @@
                     , { textContent: 'IDM', download: 'download.ef2', onclick: G_info.all.IDM, href: '#' }
                     , { textContent: 'Aria2', download: 'download.session', onclick: G_info.all.Aria2, href: '#' }
                     , { textContent: 'Aria2RPC', href: '', onclick: G_info.all.ARIA2RPC }
-                ])
+                ]
+                if (DownDanmu) {
+                    uiList.splice(4, 0, { textContent: '弹幕 JSON', download: 'download.json', onclick: G_info.one.JSON })
+                    uiList.splice(10, 0, { textContent: '弹幕 JSON', download: 'download.json', onclick: G_info.all.JSON })
+                }
+                UI.list(uiList)
             }
         }
         static async oneVideo() {
@@ -575,6 +594,18 @@
                 }]))
             })))
         }
+        /**
+         * 以 JSON 方式导出
+         * @param {Array} infos
+         */
+        static JSON(infos) {
+            let data = {}
+            infos.map(info => {
+                let { dir, id, cid, url, out } = info
+                data[id] = { BASEDIR, dir, cid, url, out }
+            })
+            return [JSON.stringify(data)]
+        }
     }
 
     class UI {
@@ -646,8 +677,8 @@
                     ]
                 }
             ], checkboxs = [  /* 单选 */
-                { textContent: '下载封面图', name: 'DownCoverPic' }
-                , { textContent: '下载弹幕 XML', name: 'DownDanmu', title: '建议使用支持 XML 的播放器，还原度极高，比如“弹弹Play”' }
+                { textContent: '下载封面图', name: 'DownCoverPic', title: "封面图" }
+                , { textContent: '下载弹幕 XML', name: 'DownDanmu', title: '更改后需刷新。因下载工具功能及方便更新弹幕，提供 JSON 文件。建议使用支持 XML 的播放器，还原度极高，比如“弹弹Play”' }
                 , { textContent: '播放页 QN 以播放器为准', name: 'QNByBofqi', title: '在播放具体视频的页面时，下载的清晰度是否以正在播放的清晰度为准' }
             ], buttons = [ /* 按钮 */
                 {

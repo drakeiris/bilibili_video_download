@@ -14,13 +14,11 @@ B站视频下载，油猴插件
 
 ### 1. 设置页
 
-点击 `设置` 开启和关闭设置页 ；设置页修改的配置**立即生效**；配置数据以 `Local Storage` 形式保存，不会因为更新版本而导致用户配置被覆盖
+点击 `设置` 开启和关闭设置页 ；设置页修改的配置**立即生效**；配置数据以 `LocalStorage` 形式保存，不会因为更新版本而导致用户配置被覆盖
 
 > 在修改配置之前打开的页面，需要刷新，当前和之后打开的页面无需
 >
 > 因为播放页为 `www.bilibili.com`，而收藏页等为 `space.bilibili.com`，所以这两部分的数据存储不互通
->
-> 本可用 GM_setValue && GM_getValue 存储，但是由于代码需要页面的上下文来获取一些数据，所以必须设置 grant 为 none，故不可用 GM_* 等功能
 
 ![setting](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/setting.PNG)
 
@@ -28,49 +26,25 @@ B站视频下载，油猴插件
 
 可下载【单个】或者【所有】Part、集
 
-#### 视频
-
-![vedio](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/video.PNG)
-
-#### 番剧
+#### 视频、番剧等
 
 ![bangumi](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/bangumi.PNG)
 
-#### 影视
-
-![cinema](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/cinema.PNG)
-
 ### 3. 收藏页/追番/追剧
 
-可下载某收藏夹内、追番、追剧内所有数据；
-
-点击 `获取数据`，之后在 `下载方式` 选择即可
+可下载某收藏夹内、追番、追剧内所有数据， `获取数据 ` 后选择 `下载方式` 即可
 
 > 因为是大批量数据，所以采用手动激活获取的方式
 >
 > 批量下载功能，暂时只支持正片。预告片、花絮等请采用单集手动下载（如果此需求较多，我再添加）
 
-#### 我的订阅
-
-追番与追剧：
-
 ![subscription](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/subscription.PNG)
-
-#### 获取数据
-
-![getData](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/getData.PNG)
-
-#### 选择下载
-
-![funcList](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/funcList.PNG)
 
 ## 描述
 
-每一个视频都会自动生成对应的文件夹，包含视频（弹幕）
+每一个视频都会自动生成对应的文件夹，包含视频（弹幕、封面图）
 
 ## 具体功能
-
-> 建议使用 Chrome 浏览器，目前只在 Chrome 浏览器上测试
 
 - [x] 视频
   - [x] 播放页面内->当前视频
@@ -107,6 +81,7 @@ B站视频下载，油猴插件
   - [x] Aria2
   - [x] Aria2RPC
     - [x] Windows 下自动切换端口转发开启/关闭
+  - [ ] 导出 JSON 文件（便于修改为其他格式）
 - [x] 大会员专享（本身也是会员才行）
 - [ ] 报告获取数据进度
 - [ ] 异常捕获与处理
@@ -118,53 +93,13 @@ B站视频下载，油猴插件
 
 ① 安装 [Tampermonkey](<http://www.tampermonkey.net/> )  插件
 
-② 添加新脚本，复制 `index.js` 代码进去保存即可
+② 在 [Greasy Fork](<https://greasyfork.org/zh-CN/users/314220-evgo2017> ) 中搜索  [bilibili_video_download](<https://greasyfork.org/zh-CN/scripts/387123-bilibili-video-download> )
 
-③ 或者在 [Greasy Fork](<https://greasyfork.org/zh-CN/users/314220-evgo2017> ) 中搜索  [bilibili_video_download](<https://greasyfork.org/zh-CN/scripts/387123-bilibili-video-download> )
+③ 或者添加新脚本->复制 `index.js` 代码->保存即可
 
 ### 下载方式
 
-简单介绍一下，及个人配置
-
-#### 1. IDM
-
-导入下载的文件即可。不过此方法不可以给文件自动命名（也许是我没有找到）。
-
-![idm](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/idm.PNG)
-
-#### 2. Aria2
-
-> 推荐：<http://aria2c.com/> 
-
-① 在 [Aria2 & YAAW 使用说明](<http://aria2c.com/usage.html>)  中 【Arai2 相关下载】中选择【Windows 懒人包下载（包含以下文件）】
-
-② 导出的文件
-
-③ 命令行方式：
-
-```
-./aria2c -i download.session
-```
-
-> 默认情况下，视频会下载到此文件夹内。
-
-![aria2](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/aria2.PNG)
-
-#### 3. Aria2RPC
-
-最推荐这个方法。此方法不需要下载、导入任何文件。
-
-Windows 用户打开 `aria2.exe` 即可。
-
-![aria2rpc](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/aria2rpc.PNG)
-
-Linux 下我的方法：
-
-① 采用 `Docker` ，镜像推荐 `wahyd4/aria2-ui`，主机端口 `6800` 映射到容器端口 `6800`（默认 `6800`），挂载 `/data/` 数据卷， 容器内配置 RPC；
-
-② 通过 `toggleForwardingPort.bat` 文件：Windows 下自动切换端口转发，如果已转发则删除转发，未转发则开启转发。因为 `HTTPS` 与 `HTTP` 协议，自己写的一个小工具。
-
-![toggleForwardingPort](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/toggleForwardingPort.PNG)
+详情请参考 `docs` 文件夹内  [`downloadTools`](1) 文档
 
 ## 相关参数
 
@@ -172,11 +107,9 @@ Linux 下我的方法：
 
 > 修改配置，直接在设置页修改即可    -2019/7/6
 
-![options](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/options.PNG)
-
 ### BASEDIR
 
-文件夹基本路径，末尾一定要有 `/`，默认为 `./`，`Aria2c.exe` 所在文件夹内。
+文件夹基本路径，末尾一定要有 `/`，默认为 `./`：`Aria2c.exe` 所在文件夹内。
 
 如果是 Docker，一般配置为 `/data/`。
 
@@ -209,6 +142,10 @@ Linux 下我的方法：
 | 0             | 自动         |        |
 
 ## 最后
+
+本可用 GM_setValue && GM_getValue 存储，但是由于代码需要页面的上下文来获取一些数据，所以必须设置 grant 为 none，故不可用 GM_* 等功能
+
+
 
 如果有问题或者需求，请提 `issues` 或者联系我，谢谢。
 
