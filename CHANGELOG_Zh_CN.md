@@ -2,6 +2,10 @@
 
 感谢大家的的使用以及建议！
 
+## 2019/07/22
+
+- 查阅了 Arai2、Node、Zlib 相关源码，以及相关问题，弹幕问题核心在于 B 站 `Content-Encoding: deflate` 返回数据并不是标准的 `deflate（zlib）` ，而是 `raw deflate` ，它没有被 `zlib` 包装，这是错误的。同时 Aria2 并未提供对于 `raw delflate` 的相关操作，故报错或文件乱码。
+
 ## 2019/07/21
 
 - 增加：弹幕 XML 地址 > JSON 格式
