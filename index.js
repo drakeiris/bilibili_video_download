@@ -3,14 +3,14 @@
 // @namespace   http://evgo2017.com/
 // @homepageURL https://github.com/evgo2017/bilibili_video_download
 // @supportURL  https://github.com/evgo2017/bilibili_video_download/issues
-// @description bilibili/哔哩哔哩视频/番剧下载，单/多P下载，单/多集下载，多视频/番剧正片下载，大会员（本身是），IDM，Aria2，Aria2RPC 导出方式，Local Storage 方式保存配置。详细内容请在 Github 查看。参考资料：https://github.com/Xmader/bilitwin/ && https://github.com/blogwy/BilibiliVideoDownload
+// @description bilibili/哔哩哔哩视频/番剧下载，单/多P下载，单/多集下载，多视频/番剧正片下载，封面图、弹幕下载，大会员（本身是），Aria2，Aria2RPC 导出方式，Local Storage 方式保存配置。详细内容请在 Github 查看。参考资料：https://github.com/Xmader/bilitwin/ && https://github.com/blogwy/BilibiliVideoDownload
 // @match       *://www.bilibili.com/video/av*
 // @match       *://www.bilibili.com/bangumi/play/ep*
 // @match       *://www.bilibili.com/bangumi/play/ss*
 // @match       *://space.bilibili.com/*/favlist*
 // @match       *://space.bilibili.com/*/bangumi*
 // @match       *://space.bilibili.com/*/cinema*
-// @version     1.2.2
+// @version     1.2.3
 // @license     MIT License
 // @author      evgo2017
 // @copyright   evgo2017
@@ -28,10 +28,13 @@
             ['BASEDIR', './']
             , ['ARIA2TOKEN', '']
             , ['ARIA2RPC', 'http://localhost:6800/jsonrpc']
+            , ['DANMURPC', 'http://localhost:6801']
             , ['QN', '120']
             , ['QNByBofqi', '0']
             , ['DownCoverPic', '0']
+            , ['DownCoverPicOnly', '0']
             , ['DownDanmu', '0']
+            , ['DownDanmuOnly', '0']
         ])
     if (!localStorage.getItem(LocalStorageName)) {
         let evgoBvd = {}
@@ -52,19 +55,25 @@
     let BASEDIR
         , ARIA2TOKEN
         , ARIA2RPC
+        , DANMURPC
         , QN
         , QNByBofqi
         , DownCoverPic
+        , DownCoverPicOnly
         , DownDanmu
+        , DownDanmuOnly
     function refreshOptions() {
         let evgoBvd = JSON.parse(localStorage.getItem(LocalStorageName))
         BASEDIR = evgoBvd.BASEDIR
         ARIA2TOKEN = evgoBvd.ARIA2TOKEN
         ARIA2RPC = evgoBvd.ARIA2RPC
+        DANMURPC = evgoBvd.DANMURPC
         QN = evgoBvd.QN
         QNByBofqi = parseInt(evgoBvd.QNByBofqi)
         DownCoverPic = parseInt(evgoBvd.DownCoverPic)
+        DownCoverPicOnly = parseInt(evgoBvd.DownCoverPicOnly)
         DownDanmu = parseInt(evgoBvd.DownDanmu)
+        DownDanmuOnly = parseInt(evgoBvd.DownDanmuOnly)
     }
     refreshOptions()
 
@@ -75,34 +84,26 @@
         get: function () { },
         one: {
             info: []
-            , danmuinfos: []
-            , IDM: function () {
-                this.href = BlobURL(Exporter.IDM(G_info.one.info))
-            }
             , Aria2: function () {
                 this.href = BlobURL(Exporter.Aria2(G_info.one.info))
             }
-            , ARIA2RPC: function () {
-                Exporter.Aria2RPC(G_info.one.info)
+            , RPC: function () {
+                Exporter.RPC(G_info.one.info)
             }
             , JSON: function () {
-                this.href = BlobURL(Exporter.JSON(G_info.one.danmuinfos))
+                this.href = BlobURL(Exporter.JSON(G_info.one.info))
             }
         },
         all: {
             info: []
-            , danmuinfos: []
-            , IDM: function () {
-                this.href = BlobURL(Exporter.IDM(G_info.all.info))
-            }
             , Aria2: function () {
                 this.href = BlobURL(Exporter.Aria2(G_info.all.info))
             }
-            , ARIA2RPC: function () {
-                Exporter.Aria2RPC(G_info.all.info)
+            , RPC: function () {
+                Exporter.RPC(G_info.all.info)
             }
             , JSON: function () {
-                this.href = BlobURL(Exporter.JSON(G_info.all.danmuinfos))
+                this.href = BlobURL(Exporter.JSON(G_info.all.info))
             }
         }
     }, G_getDataAuto = true
@@ -244,8 +245,16 @@
                 , durl = JSON.parse(res).data.durl
 
             let urls = []
+            if (DownDanmuOnly) {
+                urls.push({ xml: true, dir, id, cid, out: `${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
+                return [[urls]]
+            }
+            if (DownCoverPicOnly) {
+                urls.push({ dir, id, cid, out: `${part}.${pic.split('.').pop()}`, url: pic })
+                return [[urls]]
+            }
             if (DownCoverPic) urls.push({ dir, id, cid, out: `${part}.${pic.split('.').pop()}`, url: pic })
-            if (DownDanmu) G_info.one.danmuinfos.push({ dir, id, cid, out: `${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
+            if (DownDanmu) urls.push({ xml: true, dir, id, cid, out: `${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
             if (durl.length < 2) {
                 // 无分段
                 urls.push({ dir, id, cid, out: `${part}.FLV`, url: durl[0].url })
@@ -276,8 +285,16 @@
                         , durl = JSON.parse(res).data.durl
 
                     let urls = []
+                    if (DownDanmuOnly) {
+                        urls.push({ xml: true, dir, id, cid, out: `${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
+                        return urls
+                    }
+                    if (DownCoverPicOnly) {
+                        urls.push({ dir, id, cid, out: `${part}.${pic.split('.').pop()}`, url: pic })
+                        return urls
+                    }
                     if (DownCoverPic) urls.push({ dir, id, cid, out: `${part}.${pic.split('.').pop()}`, url: pic })
-                    if (DownDanmu) G_info.all.danmuinfos.push({ dir, id, cid, out: `${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
+                    if (DownDanmu) urls.push({ xml: true, dir, id, cid, out: `${part}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
                     if (durl.length < 2) {
                         // 无分段
                         urls.push({ dir, id, cid, out: `${part}.FLV`, url: durl[0].url })
@@ -305,8 +322,16 @@
                 , sonTitle = `第${episode}集-${part}`
 
             let urls = []
+            if (DownDanmuOnly) {
+                urls.push({ xml: true, dir, id, cid, out: `${sonTitle}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
+                return [[urls]]
+            }
+            if (DownCoverPicOnly) {
+                urls.push({ dir, id, cid, out: `${sonTitle}.${cover.split('.').pop()}`, url: cover })
+                return [[urls]]
+            }
             if (DownCoverPic) urls.push({ dir, id, cid, out: `${sonTitle}.${cover.split('.').pop()}`, url: cover })
-            if (DownDanmu) G_info.one.danmuinfos.push({ dir, id, cid, out: `${sonTitle}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
+            if (DownDanmu) urls.push({ xml: true, dir, id, cid, out: `${sonTitle}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
             if (durl.length < 2) {
                 // 无分段
                 urls.push({ dir, id, cid, out: `${sonTitle}.FLV`, url: durl[0].url })
@@ -346,8 +371,16 @@
                         , sonTitle = `第${episode}集-${part}`
 
                     let urls = []
+                    if (DownDanmuOnly) {
+                        urls.push({ xml: true, dir, id, cid, out: `${sonTitle}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
+                        return urls
+                    }
+                    if (DownCoverPicOnly) {
+                        urls.push({ dir, id, cid, out: `${sonTitle}.${cover.split('.').pop()}`, url: cover })
+                        return urls
+                    }
                     if (DownCoverPic) urls.push({ dir, id, cid, out: `${sonTitle}.${cover.split('.').pop()}`, url: cover })
-                    if (DownDanmu) G_info.all.danmuinfos.push({ dir, id, cid, out: `${sonTitle}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
+                    if (DownDanmu) urls.push({ xml: true, dir, id, cid, out: `${sonTitle}.xml`, url: `https://api.bilibili.com/x/v1/dm/list.so?oid=${cid}` })
                     if (durl.length < 2) {
                         // 无分段
                         urls.push({ dir, id, cid, out: `${sonTitle}.FLV`, url: durl[0].url })
@@ -386,13 +419,10 @@
                             await G_info.get()
                             let uiList = [
                                 {}
-                                , { textContent: 'IDM', download: 'download.ef2', onclick: G_info.all.IDM, href: '#' }
-                                , { textContent: 'Aria2', download: 'download.session', onclick: G_info.all.Aria2, href: '#' }
-                                , { textContent: 'Aria2RPC', onclick: G_info.all.ARIA2RPC }
+                                , { textContent: '导出文件', download: 'download.session', onclick: G_info.all.Aria2, href: '#' }
+                                , { textContent: '远程 RPC', onclick: G_info.all.RPC }
+                                , { textContent: '原始数据', download: 'download.json', onclick: G_info.all.JSON }
                             ]
-                            if (DownDanmu) {
-                                uiList.splice(4, 0, { textContent: '弹幕 JSON', download: 'download.json', onclick: G_info.all.JSON })
-                            }
                             UI.list(uiList)
                         }
                     }
@@ -410,20 +440,16 @@
                 G_getDataAuto = true
                 await G_info.get()
                 let uiList = [
-                    '单个'
-                    , { textContent: 'IDM', download: 'download.ef2', onclick: G_info.one.IDM, href: '#' }
-                    , { textContent: 'Aria2', download: 'download.session', onclick: G_info.one.Aria2, href: '#' }
-                    , { textContent: 'Aria2RPC', href: '', onclick: G_info.one.ARIA2RPC }
+                    '当前'
+                    , { textContent: '导出文件', download: 'download.session', onclick: G_info.one.Aria2, href: '#' }
+                    , { textContent: '远程 RPC', href: '', onclick: G_info.one.RPC }
+                    , { textContent: '原始数据', download: 'download.json', onclick: G_info.all.JSON }
                     , {}
-                    , '多个'
-                    , { textContent: 'IDM', download: 'download.ef2', onclick: G_info.all.IDM, href: '#' }
-                    , { textContent: 'Aria2', download: 'download.session', onclick: G_info.all.Aria2, href: '#' }
-                    , { textContent: 'Aria2RPC', href: '', onclick: G_info.all.ARIA2RPC }
+                    , '全部'
+                    , { textContent: '导出文件', download: 'download.session', onclick: G_info.all.Aria2, href: '#' }
+                    , { textContent: '远程 RPC', href: '', onclick: G_info.all.RPC }
+                    , { textContent: '原始数据', download: 'download.json', onclick: G_info.all.JSON }
                 ]
-                if (DownDanmu) {
-                    uiList.splice(4, 0, { textContent: '弹幕 JSON', download: 'download.json', onclick: G_info.one.JSON })
-                    uiList.splice(10, 0, { textContent: '弹幕 JSON', download: 'download.json', onclick: G_info.all.JSON })
-                }
                 UI.list(uiList)
             }
         }
@@ -535,18 +561,6 @@
 
     class Exporter {
         /**
-         * 以 IDM 方式导出
-         * @param {Array} infos
-         */
-        static IDM(infos) {
-            let data = []
-            infos.map(info => info.map(pages => pages.map(page => {
-                let { url } = page
-                data.push(`<\r\n${url}\r\nreferer: ${REFERER}\r\n>\r\n`)
-            })))
-            return data
-        }
-        /**
          * 以 Aria2 方式导出
          * @param {Array} infos
          */
@@ -559,12 +573,13 @@
             return data
         }
         /**
-         * 将数据发送到 Aria2RPC
+         * 将数据发送到 RPC
          * @param {Array} infos
          */
-        static Aria2RPC(infos) {
+        static RPC(infos) {
+            console.log(infos)
             infos.map(info => info.map(pages => pages.map(page => {
-                let { dir, out, url } = page
+                let { dir, out, url, xml } = page
                     , rpcStatus = document.getElementById('rpcStatus')
                     , xhr = new XMLHttpRequest()
 
@@ -580,18 +595,33 @@
                 xhr.ontimeout = () => {
                     rpcStatus.innerHTML += '<p>请求超时</p>'
                 }
-                xhr.open('POST', `${ARIA2RPC}`, true)
-                xhr.setRequestHeader('Content-Type', 'application/json;charset=utf-8')
-                xhr.send(JSON.stringify([{
-                    id: '',
-                    jsonrpc: 2,
-                    method: "aria2.addUri",
-                    params: [
-                        `token:${ARIA2TOKEN}`,
-                        [url],
-                        { 'referer': `${REFERER}`, 'dir': `${BASEDIR}${dir}`, 'out': `${out}`, 'http-accept-gzip': 'true' }
-                    ]
-                }]))
+                if(xml) {
+                    xhr.open('POST', `${DANMURPC}`, true)
+                    xhr.setRequestHeader('Content-Type', 'application/json;charset=utf-8')
+                    xhr.send(JSON.stringify({
+                        jsonrpc: "2.0",
+                        id: "",
+                        method: "add",
+                        params: {
+                            'dir': `${BASEDIR}${dir}`,
+                            'out': `${out}`,
+                            'url': `${url}`
+                        }
+                    }))
+                } else {
+                    xhr.open('POST', `${ARIA2RPC}`, true)
+                    xhr.setRequestHeader('Content-Type', 'application/json;charset=utf-8')
+                    xhr.send(JSON.stringify([{
+                        jsonrpc: "2.0",
+                        id: "",
+                        method: "aria2.addUri",
+                        params: [
+                            `token:${ARIA2TOKEN}`,
+                            [url],
+                            { 'referer': `${REFERER}`, 'dir': `${BASEDIR}${dir}`, 'out': `${out}`, 'http-accept-gzip': 'true' }
+                        ]
+                    }]))
+                }
             })))
         }
         /**
@@ -600,10 +630,10 @@
          */
         static JSON(infos) {
             let data = {}
-            infos.map(info => {
-                let { dir, id, cid, url, out } = info
-                data[id] = { BASEDIR, dir, cid, url, out }
-            })
+            infos.map(info => info.map(pages => pages.map(page => {
+                let { dir, id, cid, url, out } = page
+                data[id] = { dir, cid, url, out, BASEDIR, REFERER }
+            })))
             return [JSON.stringify(data)]
         }
     }
@@ -657,8 +687,9 @@
 
             const inputTexts = [ /* 输入框 */
                 { textContent: `基础路径（以 “/\” 结尾）`, name: 'BASEDIR' }
-                , { textContent: 'ARIA2TOKEN', name: 'ARIA2TOKEN' }
-                , { textContent: 'ARIA2RPC', name: 'ARIA2RPC' }
+                , { textContent: 'Aria2 Token', name: 'ARIA2TOKEN' }
+                , { textContent: 'Aria2 RPC', name: 'ARIA2RPC' }
+                , { textContent: '弹幕 RPC', name: 'DANMURPC' }
             ], selects = [ /* 下拉菜单 */
                 {
                     textContent: '最高清晰度（QN）'
@@ -679,6 +710,8 @@
             ], checkboxs = [  /* 单选 */
                 { textContent: '下载封面图', name: 'DownCoverPic', title: "封面图" }
                 , { textContent: '下载弹幕 XML', name: 'DownDanmu', title: '更改后需刷新。因下载工具功能及方便更新弹幕，提供 JSON 文件。建议使用支持 XML 的播放器，还原度极高，比如“弹弹Play”' }
+                , { textContent: '仅更新弹幕 XML', name: 'DownDanmuOnly', title: '仅更新弹幕，不下载其他资料，权重最高' }
+                , { textContent: '仅下载封面图', name: 'DownCoverPicOnly', title: '仅下载封面图，不下载其他资料，当同时选择【仅更新弹幕 XML】时，此项无效' }
                 , { textContent: '播放页 QN 以播放器为准', name: 'QNByBofqi', title: '在播放具体视频的页面时，下载的清晰度是否以正在播放的清晰度为准' }
             ], buttons = [ /* 按钮 */
                 {

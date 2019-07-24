@@ -1,8 +1,5 @@
 const http = require('http')
-    , exec = require('child_process').exec
-    , path = require('path')
     , zlib = require('zlib')
-    , fs = require('fs')
     , port = 7777
 
 console.log("Danmu API Server is running " + port)
