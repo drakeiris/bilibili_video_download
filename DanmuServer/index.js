@@ -1,6 +1,4 @@
 const fs = require('fs')
-, http = require('http')
-    , https = require('https')
     , zlib = require('zlib')
     , path = require('path')
     , xml2js = require('xml2js')
@@ -9,8 +7,10 @@ const fs = require('fs')
     , connect = require('connect')
     , jsonParser = require('body-parser').json
     , app = connect()
+    , request = require('request')
 
 const portRPC = 6801
+    , logFile='./log.html'
 
 function distinct(a, b) {
     let arr = a.concat(b)
@@ -25,49 +25,46 @@ function distinct(a, b) {
     }
     return result
 }
+function addLog(str) {
+    fs.appendFile(logFile, `<p>${new Date()}：${str}<p>`, (e) => {
+        if(e) throw e
+        console.log(str)
+    })
+}
 
 const server = jayson.server({
   add: function(args, callback) {
     const { dir, out, url } = args
         , file = path.join(dir, out)
-    https.get(url, (res) => {
-        res.on('data', (data) => {
-            if(fs.existsSync(file)) {
-                // 文件存在则补充
-                zlib.inflateRaw(data, (e, buffer) => {
+        , tempFile = path.join(dir, `new${out}`)
+    if(fs.existsSync(file)) {
+        let ws = fs.createWriteStream(tempFile)
+        request(url).pipe(zlib.createInflateRaw()).pipe(ws)
+        let oldFileData = fs.readFileSync(file).toString()
+        ws.on('finish', function() {
+            let newFileData = fs.readFileSync(tempFile).toString()
+            new xml2js.parseString(oldFileData, (e, oldData) => {
+                if(e) throw e
+                new xml2js.parseString(newFileData, (e, newData) => {
                     if(e) throw e
-                    new xml2js.parseString(buffer.toString(), (e, newData) => {
-                        if(e) throw e
-                        fs.readFile(file, (e, oldFile) => {
-                            if(e) throw e
-                            new xml2js.parseString(oldFile.toString(), (e, oldData) => {
-                                if(e) throw e
-                                oldData.i.d = distinct(oldData.i.d, newData.i.d)
-                                fs.writeFile(file, new xml2js.Builder().buildObject(oldData), function(e){
-                                    if (e) throw event
-                                    console.log(`【${dir}】 ${out} 文件已更新`)
-                                })
-                            })
-                        })
-                    }) 
+                    newData.i.d = distinct(newData.i.d, oldData.i.d)
+                    let result = new xml2js.Builder().buildObject(newData)
+                    fs.writeFileSync(file, result)
+                    fs.unlinkSync(tempFile)
+                    addLog(`【${dir}】 ${out} 文件已更新`)
                 })
-            } else {
-                // 不存在则直接写入
-                fs.mkdir(path.join(dir), { recursive: true }, (e) => {
-                    if (e) throw e
-                    zlib.inflateRaw(data, (e, buffer) => {
-                        if (e) throw e
-                        fs.writeFile(file, buffer, function(e) {
-                            if (e) throw e
-                            console.log(`【${dir}】 ${out} 文件已下载`)
-                        })
-                    })
-                })
-            }
+            })
         })
-    }).on('error', (e) => {
-        console.error(e)
-    })
+    } else {
+        fs.mkdir(path.join(dir), { recursive: true }, (e) => {
+            if (e) throw e
+        })
+        let ws = fs.createWriteStream(file)
+        request(url).pipe(zlib.createInflateRaw()).pipe(ws)
+        ws.on('finish', function() {
+            addLog(`【${dir}】 ${out} 文件已下载`)
+        })
+    }
     callback(null, args.out)
   }
 })
@@ -76,4 +73,7 @@ app.use(cors({methods: ['POST']}))
 app.use(jsonParser())
 app.use(server.middleware())
 
-app.listen(portRPC)
+app.listen(portRPC, function(e){
+    if(e) throw e
+    console.log(portRPC)
+})

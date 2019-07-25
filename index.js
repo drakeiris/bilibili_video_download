@@ -3,7 +3,7 @@
 // @namespace   http://evgo2017.com/
 // @homepageURL https://github.com/evgo2017/bilibili_video_download
 // @supportURL  https://github.com/evgo2017/bilibili_video_download/issues
-// @description bilibili/哔哩哔哩视频/番剧下载，单/多P下载，单/多集下载，多视频/番剧正片下载，封面图、弹幕下载，大会员（本身是），Aria2，Aria2RPC 导出方式，Local Storage 方式保存配置。详细内容请在 Github 查看。参考资料：https://github.com/Xmader/bilitwin/ && https://github.com/blogwy/BilibiliVideoDownload
+// @description 单/多P，单/多集，多视频/番剧正片，弹幕，封面图，大会员，Aria2 导出方式，Aria2RPC，弹幕 RPC（可更新弹幕），Local Storage  方式保存配置
 // @match       *://www.bilibili.com/video/av*
 // @match       *://www.bilibili.com/bangumi/play/ep*
 // @match       *://www.bilibili.com/bangumi/play/ss*

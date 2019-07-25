@@ -1,30 +1,8 @@
 # 下载方式
 
-各方法利弊：
+目前仅采用 Arai2 工具，弹幕服务需自行搭建服务（具体查看 DanmuServer 文件夹）
 
-| 名称            | 下载视频/封面图 | 下载弹幕 | 文件夹/文件命名 | 远程 |
-| --------------- | --------------- | -------- | --------------- | ---- |
-| IDM             | √               | ×        | ×               | ×    |
-| Aria2           | √               | ×        | √               | √    |
-| PowerShell/Curl | √               | √        | √               | √    |
-
-## 一、PowerShell/Curl
-
-其实这个方法就是自己写个脚本，批量执行就好。
-
-目前批量下载弹幕用这种方法较为方便，之后有更合适的工具再更新吧。将导出的【弹幕 JSON】文件，转为各个下载工具适用的格式。比如 Windows 下的  PowerShell 格式（下载地址为绝对地址）：
-
-```
-curl -OutFile C:\data\dir\title.xml -H @{"Referer"="https://www.bilibili.com"} -Uri "xml url"
-```
-
-## 二、IDM
-
-导入下载的文件即可。不过此方法不可以给文件自动命名（也许是我没有找到）。
-
-![idm](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/idm.PNG)
-
-## 三、Aria2
+## Arai2
 
 > 推荐：<http://aria2c.com/> 
 

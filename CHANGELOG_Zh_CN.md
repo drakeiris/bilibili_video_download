@@ -2,9 +2,29 @@
 
 感谢大家的的使用以及建议！
 
+## 2019/07/25
+
+- 新增：弹幕 Server > log.html
+
+  ```
+  可查看弹幕下载/更新的日志记录
+  ```
+
+- 新增：toggleForwardingPort.bat > 转发弹幕 Server 端口
+
+  ```
+  不需要注释掉即可
+  ```
+
+- 完善：弹幕 Server 逻辑
+
+  ```
+  之前会出现 invalid stored block lengths，所以决定使用 Stream，先把文件解压保存在本地，再依次读取新旧两个弹幕文件，进行比对去重写入，最后删除解压后的文件
+  ```
+
 ## 2019/07/24
 
-- 新增：弹幕 XML Server
+- 新增：弹幕 Server
 
   ```
   因 raw deflate 的原因，无法使用 Arai2 下载弹幕文件，故使用 node.js 写了一个小型 rpc 服务，

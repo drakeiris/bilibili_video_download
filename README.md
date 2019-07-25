@@ -1,24 +1,26 @@
 # bilibili_video_download
 
-B站视频下载，油猴插件
+B站视频下载，油猴插件。
 
-单/多P，单/多集，多视频/番剧正片，大会员，IDM、Aria2、Aria2RPC 导出方式，Local Storage  方式保存配置
+关键词：单/多P，单/多集，多视频/番剧正片，弹幕，封面图，大会员，Aria2 导出方式，Aria2RPC，弹幕 RPC（可更新弹幕），Local Storage  方式保存配置
 
-注：此工具仅方便个人收藏视频之用，所获数据绝不传播或谋取利益。违者责任自负。
+> 此工具仅方便个人收藏视频之用，所获数据绝不传播或谋取利益。违者责任自负。
+>
+> 所有功能建立在个人账号权限基础之上：清晰度和视频专享也需要你本身是大会员。
 
-> 所有功能建立在个人账号权限基础之上：清晰度和视频专享也需要你本身是大会员
+## 一、应用示例
 
-## 应用示例
-
-不同页面会在【左侧】出现不同的【功能列表】，选择【下载】即可。
+不同页面会在【左侧】出现不同的【功能列表】，选择【下载】即可
 
 ### 1. 设置页
 
-点击 `设置` 开启和关闭设置页 ；设置页修改的配置**立即生效**；配置数据以 `LocalStorage` 形式保存，不会因为更新版本而导致用户配置被覆盖
+① 点击 `设置` 开启和关闭设置页 ；
 
-> 在修改配置之前打开的页面，需要刷新，当前和之后打开的页面无需
->
-> 因为播放页为 `www.bilibili.com`，而收藏页等为 `space.bilibili.com`，所以这两部分的数据存储不互通
+② 设置页修改的配置**立即**生效：在修改配置之前打开的页面，需刷新，当前和之后打开的页面无需（若有误刷新页面即可）；
+
+③ 更新版本**不影响**用户配置：配置数据以 `LocalStorage` 形式保存，因为播放页为 `www.bilibili.com`，而收藏页等为 `space.bilibili.com`，所以这两部分的数据存储不互通
+
+④ 鼠标悬浮在设置页面的选项上，会有相关说明**提示**
 
 ![setting](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/setting.PNG)
 
@@ -40,11 +42,33 @@ B站视频下载，油猴插件
 
 ![subscription](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/subscription.PNG)
 
-## 描述
+![getData](https://evgo-website.oss-cn-shanghai.aliyuncs.com/img/post/bilibili_video_download/getData.PNG)
+
+## 二、使用方法
+
+### 1. 安装油猴
+
+① 安装 [Tampermonkey](<http://www.tampermonkey.net/> )  插件；
+
+② 在 [Greasy Fork](<https://greasyfork.org/zh-CN/users/314220-evgo2017> ) 中搜索  [bilibili_video_download](<https://greasyfork.org/zh-CN/scripts/387123-bilibili-video-download> )；
+
+③ 或者添加新脚本->复制 `index.js` 代码->保存即可
+
+### 2. 下载方式
+
+详情请参考 `docs` 文件夹内  [`downloadTools`](<https://github.com/evgo2017/bilibili_video_download/blob/master/docs/downloadTools.md> ) 文档
+
+### 3. 播放弹幕
+
+弹幕为 XML 格式文件，选择支持此格式的播放器即可，推荐 [弹弹 Play](<http://www.dandanplay.com/> )
+
+> 在考虑播放弹幕的方案时，曾采用工具将 XML 转为 ASS 等格式，但播放效果不尽人意，再综合各方因素（转换、数据接口等），选择合适的播放器是最佳方案。
+
+## 三、描述
 
 每一个视频都会自动生成对应的文件夹，包含视频（弹幕、封面图）
 
-## 具体功能
+## 四、具体功能
 
 - [x] 视频
   - [x] 播放页面内->当前视频
@@ -64,6 +88,8 @@ B站视频下载，油猴插件
   - [x] 视频封面图
   - [x] 弹幕（没有弹幕的 Bilibili 是没有灵魂的）
     - [x] 更新弹幕
+      - [ ] 自动更新
+    - [x] 日志
 - [x] 功能列表
   - [x] 无需刷新页面->更新列表
   - [x] 匹配页面
@@ -87,43 +113,33 @@ B站视频下载，油猴插件
 - [ ] 异常捕获与处理
   - [ ] 某数据获取失败则跳过报告
 
-## 使用方法
+## 五、相关参数
 
-### 安装油猴
-
-① 安装 [Tampermonkey](<http://www.tampermonkey.net/> )  插件
-
-② 在 [Greasy Fork](<https://greasyfork.org/zh-CN/users/314220-evgo2017> ) 中搜索  [bilibili_video_download](<https://greasyfork.org/zh-CN/scripts/387123-bilibili-video-download> )
-
-③ 或者添加新脚本->复制 `index.js` 代码->保存即可
-
-### 下载方式
-
-详情请参考 `docs` 文件夹内  [`downloadTools`](1) 文档
-
-## 相关参数
-
-主要是 `BASEDIR` ，`ARIA2RPC` 、 `ARIA2TOKEN` 和 `QN` 三个参数。
+主要是 `BASEDIR` ，`ARIA2RPC` 、 `ARIA2TOKEN` 和 `QN` 三个参数
 
 > 修改配置，直接在设置页修改即可    -2019/7/6
 
-### BASEDIR
+### 1. BASEDIR
 
-文件夹基本路径，末尾一定要有 `/`，默认为 `./`：`Aria2c.exe` 所在文件夹内。
+① 文件夹基本路径，末尾一定要有 `/`，默认为 `./`：`Aria2c.exe` 所在文件夹内；
 
-如果是 Docker，一般配置为 `/data/`。
+② 如果是 Docker，一般配置为 `/data/`
 
-### ARIA2RPC、ARIA2TOKEN
+### 2. Aria2 RPC、Aria2 Token
 
-与 `ARIA2RPC` 下载方法有关， 若不使用此方法则无需设置。
+与 `Aria2 RPC` 下载方法有关， 若不使用此方法则无需设置；
 
-`ARIA2RPC` ：基本无需改动。
+`Aria2 RPC` ：基本无需改动；
 
-`ARIA2TOKEN` ：如果有设置 `token` ，则需要修改。
+`Aria2 Token` ：如果有设置 `token` ，则需要修改
 
-### QN
+### 3. 弹幕 RPC
 
-建议 `QN` 设置为 `120`，即使视频达不到此清晰度，但会默认返回个人账号和视频支持的最高清晰度。
+若需要下载弹幕，则需要配置此项，且需搭建服务，具体请查看 [DanmuServe](<https://github.com/evgo2017/bilibili_video_download/tree/master/DanmuServer> > ) 文件夹
+
+### 4. QN
+
+建议 `QN` 设置为 `120`，即使视频达不到此清晰度，但会默认返回个人账号和视频支持的最高清晰度
 
 > 感谢 @[RJTT233](<https://github.com/RJTT233> )，[issues](<https://github.com/evgo2017/bilibili_video_download/issues/4> ) 补充的 4K 信息 --2019/07/07
 >
@@ -141,12 +157,12 @@ B站视频下载，油猴插件
 | 16            | 流畅 360P    |        |
 | 0             | 自动         |        |
 
-## 最后
+## 六、最后
 
 本可用 GM_setValue && GM_getValue 存储，但是由于代码需要页面的上下文来获取一些数据，所以必须设置 grant 为 none，故不可用 GM_* 等功能
 
 
 
-如果有问题或者需求，请提 `issues` 或者联系我，谢谢。
+如果有问题或者需求，请提 `issues` 或者联系我，谢谢
 
 Github：<https://github.com/evgo2017/bilibili_video_download>
